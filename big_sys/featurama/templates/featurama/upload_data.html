@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload Dataset - Pipeline {{ pipeline.id }}</title>
+</head>
+<body>
+    <h1>Pipeline #{{ pipeline.id }}</h1>
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {% if features %}
+            <h2>Dataset: {{ dataset_name }}</h2>
+            <div>
+                <label for="target_variable">Select Target Variable:</label>
+                <select id="target_variable" name="target_variable" required>
+                    <option value="">Select a target variable</option>
+                    {% for feature in features %}
+                    <option value="{{ feature }}">{{ feature }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit">Complete Upload</button>
+        {% else %}
+            <div>
+                <label for="dataset_file">Upload Dataset File:</label>
+                <input type="file" id="dataset_file" name="dataset_file" accept=".csv,.xlsx,.xls" required>
+            </div>
+            <button type="submit">Upload Dataset</button>
+        {% endif %}
+    </form>
+
+    {% if error %}
+        <p style="color: red;">{{ error }}</p>
+    {% endif %}
+
+    <p><a href="{% url 'featurama:pipelines' %}">Back to Pipelines</a></p>
+</body>
+</html> 

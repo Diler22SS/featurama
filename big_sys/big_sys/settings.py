@@ -128,12 +128,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_DIR = os.path.join(PROJECT_ROOT, 'static')
-STATIC_ROOT = "/home/fedor/django-dev/static"
+# STATIC_ROOT = "/home/fedor/django-dev/static"
+STATIC_ROOT = os.path.join(PROJECT_ROOT, 'staticfiles')
 STATICFILES_DIRS = [STATIC_DIR,]
 STATIC_URL = 'static/'
 
 MEDIA_URL = 'media/'
-MEDIA_ROOT = '/home/fedor/django-dev/media'
+# MEDIA_ROOT = '/home/fedor/django-dev/media'
+MEDIA_ROOT = os.path.join(PROJECT_ROOT, 'media')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

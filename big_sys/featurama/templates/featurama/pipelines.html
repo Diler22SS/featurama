@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pipelines Hub</title>
+</head>
+<body>
+    <h1>Pipeline Command Center 🛠️</h1>
+
+    <form method="post">
+        {% csrf_token %}
+        <button type="submit">➕ Create New Pipeline</button>
+    </form>
+
+    <hr>
+    <h2>Existing Pipelines:</h2>
+    <ul>
+        {% for pipeline in pipelines %}
+            <li>
+                <strong>{{ pipeline }}</strong>
+                <a href="{% url 'featurama:upload_data' pipeline.id %}"><button>✏️ Edit</button></a>
+                <form method="post" action="{% url 'featurama:delete_pipeline' pipeline.id %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" onclick="return confirm('Are you sure you want to delete this pipeline?')">🗑️ Delete</button>
+                </form>
+            </li>
+        {% empty %}
+            <li>No pipelines yet. Be the first to make one!</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Configure Pipeline - Pipeline {{ pipeline.id }}</title>
+    <style>
+        .method-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .method-description {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 0.5rem;
+        }
+        select {
+            width: 100%;
+            padding: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <h1>Configure Pipeline #{{ pipeline.id }}</h1>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="method-section">
+            <h2>Filter Method</h2>
+            <select name="filter_method" required>
+                <option value="">Select a filter method</option>
+                {% for method, description in filter_methods.items %}
+                <option value="{{ method }}" {% if pipeline.filter_method == method %}selected{% endif %}>
+                    {{ method|title }}
+                </option>
+                {% endfor %}
+            </select>
+            <div class="method-description">
+                Filter methods select features based on their statistical properties
+            </div>
+        </div>
+
+        <div class="method-section">
+            <h2>Wrapper Method</h2>
+            <select name="wrapper_method" required>
+                <option value="">Select a wrapper method</option>
+                {% for method, description in wrapper_methods.items %}
+                <option value="{{ method }}" {% if pipeline.wrapper_method == method %}selected{% endif %}>
+                    {{ method|title }}
+                </option>
+                {% endfor %}
+            </select>
+            <div class="method-description">
+                Wrapper methods use a machine learning model to evaluate feature subsets
+            </div>
+        </div>
+
+        <div class="method-section">
+            <h2>Model Method</h2>
+            <select name="model_method" required>
+                <option value="">Select a model method</option>
+                {% for method, description in model_methods.items %}
+                <option value="{{ method }}" {% if pipeline.model_method == method %}selected{% endif %}>
+                    {{ method|title }}
+                </option>
+                {% endfor %}
+            </select>
+            <div class="method-description">
+                The final model to be used for prediction
+            </div>
+        </div>
+
+        <button type="submit">Save Configuration</button>
+    </form>
+
+    <p><a href="{% url 'featurama:pipelines' %}">Back to Pipelines</a></p>
+</body>
+</html> 

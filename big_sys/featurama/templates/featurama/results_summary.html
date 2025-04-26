@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Results Summary - Pipeline {{ pipeline.id }}</title>
+    <style>
+        .section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .metric-card {
+            padding: 1rem;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        .plot-container {
+            margin: 1rem 0;
+            padding: 1rem;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            min-height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f9f9f9;
+        }
+        .plot-placeholder {
+            color: #666;
+            font-style: italic;
+        }
+        .button-group {
+            margin: 1rem 0;
+            display: flex;
+            gap: 1rem;
+        }
+        .button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button-primary {
+            background-color: #2196F3;
+            color: white;
+        }
+        .button-secondary {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .features-list {
+            list-style-type: none;
+            padding: 0;
+            columns: 3;
+        }
+        .feature-item {
+            padding: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <h1>Results Summary - Pipeline #{{ pipeline.id }}</h1>
+    
+    <div class="section">
+        <h2>Pipeline Information</h2>
+        <p><strong>Dataset:</strong> {{ pipeline.dataset.name }}</p>
+        <p><strong>Filter Method:</strong> {{ pipeline.filter_method|title }}</p>
+        <p><strong>Wrapper Method:</strong> {{ pipeline.wrapper_method|title }}</p>
+        <p><strong>Model Method:</strong> {{ pipeline.model_method|title }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Model Metrics</h2>
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">ROC-AUC</div>
+                <div class="metric-value">{{ metrics.roc_auc|default:"-" }}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Accuracy</div>
+                <div class="metric-value">{{ metrics.accuracy|default:"-" }}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">F1 Score</div>
+                <div class="metric-value">{{ metrics.f1|default:"-" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Selected Features</h2>
+        <ul class="features-list">
+            {% for feature in selected_features %}
+                <li class="feature-item">{{ feature }}</li>
+            {% empty %}
+                <li>No features selected yet</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>SHAP Analysis</h2>
+        <h3>Global Importance</h3>
+        <div class="plot-container">
+            {% if shap_plots.global %}
+                <img src="{{ shap_plots.global }}" alt="Global SHAP Plot">
+            {% else %}
+                <div class="plot-placeholder">Global SHAP plot will be displayed here</div>
+            {% endif %}
+        </div>
+        
+        <h3>Local Importance</h3>
+        <div class="plot-container">
+            {% if shap_plots.local %}
+                <img src="{{ shap_plots.local }}" alt="Local SHAP Plot">
+            {% else %}
+                <div class="plot-placeholder">Local SHAP plot will be displayed here</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="button-group">
+        <a href="{% url 'featurama:configure_pipeline' pipeline.id %}" class="button button-primary">
+            Edit Pipeline
+        </a>
+        <a href="{% url 'featurama:pipelines' %}" class="button button-secondary">
+            Create New Pipeline
+        </a>
+        <button class="button" onclick="exportReport()">Export Report</button>
+    </div>
+
+    <script>
+        function exportReport() {
+            // Placeholder for export functionality
+            alert('Export functionality will be implemented here');
+        }
+    </script>
+</body>
+</html> 

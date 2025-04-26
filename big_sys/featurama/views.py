@@ -95,7 +95,7 @@ def upload_data(request: HttpRequest, pipeline_id: int) -> HttpResponse:
                 os.unlink(temp_file_path)
                 del request.session['temp_file_path']
                 del request.session['temp_file_name']
-                return redirect('featurama:pipelines')
+                return redirect('featurama:configure_pipeline', pipeline_id=pipeline.id)
             except Exception as e:
                 return render(request, 'featurama/upload_data.html', {
                     'pipeline': pipeline,
@@ -104,7 +104,96 @@ def upload_data(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     return render(request, 'featurama/upload_data.html', {'pipeline': pipeline})
 
 
+def configure_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
+    """Configure pipeline methods and parameters.
+    
+    Args:
+        request: The HTTP request
+        pipeline_id: ID of the pipeline to configure
+        
+    Returns:
+        HttpResponse: Rendered configuration page or redirect
+    """
+    pipeline = get_object_or_404(Pipeline, id=pipeline_id)
+    
+    if request.method == 'POST':
+        # Update pipeline with selected methods
+        pipeline.filter_method = request.POST.get('filter_method')
+        pipeline.wrapper_method = request.POST.get('wrapper_method')
+        pipeline.model_method = request.POST.get('model_method')
+        pipeline.save()
+        return redirect('featurama:results_summary', pipeline_id=pipeline.id)
+    
+    # Define available methods with descriptions
+    filter_methods = {
+        'variance_threshold': 'Variance Threshold – removes low-variance features',
+        'correlation': 'Correlation – removes highly correlated features',
+        'mutual_info': 'Mutual Information – selects features based on mutual information score'
+    }
+    
+    wrapper_methods = {
+        'recursive_feature_elimination': 'Recursive Feature Elimination – recursively removes features',
+        'sequential_feature_selection': 'Sequential Feature Selection – adds/removes features one at a time'
+    }
+    
+    model_methods = {
+        'random_forest': 'Random Forest – ensemble method using multiple decision trees',
+        'xgboost': 'XGBoost – gradient boosting framework',
+        'logistic_regression': 'Logistic Regression – linear model for classification'
+    }
+    
+    return render(request, 'featurama/configure_pipeline.html', {
+        'pipeline': pipeline,
+        'filter_methods': filter_methods,
+        'wrapper_methods': wrapper_methods,
+        'model_methods': model_methods
+    })
+
+
 def delete_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
+    """Delete a pipeline and redirect to the pipelines list view.
+    
+    Args:
+        request: The HTTP request
+        pipeline_id: ID of the pipeline to delete
+        
+    Returns:
+        HttpResponse: Redirect to pipelines list view
+    """
+    # TODO: Delete the dataset associated with the pipeline
     pipeline = get_object_or_404(Pipeline, id=pipeline_id)
     pipeline.delete()
     return redirect('featurama:pipelines')
+
+
+def results_summary(request: HttpRequest, pipeline_id: int) -> HttpResponse:
+    """Display the results summary for a pipeline.
+    
+    Args:
+        request: The HTTP request
+        pipeline_id: ID of the pipeline to show results for
+        
+    Returns:
+        HttpResponse: Rendered results summary page
+    """
+    pipeline = get_object_or_404(Pipeline, id=pipeline_id)
+    
+    # Get all pipelines for the same dataset
+    related_pipelines = Pipeline.objects.filter(
+        dataset=pipeline.dataset
+    ).exclude(id=pipeline.id).order_by('-created_at')
+    
+    return render(request, 'featurama/results_summary.html', {
+        'pipeline': pipeline,
+        'related_pipelines': related_pipelines,
+        'metrics': {
+            'roc_auc': None,  # Placeholder for actual metrics
+            'accuracy': None,
+            'f1': None
+        },
+        'selected_features': [],  # Placeholder for actual features
+        'shap_plots': {
+            'global': None,  # Placeholder for SHAP plots
+            'local': None
+        }
+    })

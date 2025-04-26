@@ -1,53 +1,53 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Configure Pipeline - Pipeline {{ pipeline.id }}</title>
-    <style>
-        .method-section {
-            margin-bottom: 2rem;
-            padding: 1rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .method-description {
-            font-size: 0.9em;
-            color: #666;
-            margin-top: 0.5rem;
-        }
-        select {
-            width: 100%;
-            padding: 0.5rem;
-            margin-top: 0.5rem;
-        }
-        .tooltip {
-            position: relative;
-            display: inline-block;
-        }
-        .tooltip .tooltiptext {
-            visibility: hidden;
-            width: 200px;
-            background-color: #555;
-            color: #fff;
-            text-align: center;
-            border-radius: 6px;
-            padding: 5px;
-            position: absolute;
-            z-index: 1;
-            bottom: 125%;
-            left: 50%;
-            margin-left: -100px;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
-        }
-    </style>
-</head>
-<body>
-    <h1>Configure Pipeline #{{ pipeline.id }}</h1>
-    
+{% extends "featurama/base.html" %}
+
+{% block title %}Configure Pipeline - Pipeline {{ pipeline.id }}{% endblock %}
+
+{% block header %}Configure Pipeline #{{ pipeline.id }}{% endblock %}
+
+{% block additional_styles %}
+    .method-section {
+        margin-bottom: 2rem;
+        padding: 1rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .method-description {
+        font-size: 0.9em;
+        color: #666;
+        margin-top: 0.5rem;
+    }
+    select {
+        width: 100%;
+        padding: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .tooltip {
+        position: relative;
+        display: inline-block;
+    }
+    .tooltip .tooltiptext {
+        visibility: hidden;
+        width: 200px;
+        background-color: #555;
+        color: #fff;
+        text-align: center;
+        border-radius: 6px;
+        padding: 5px;
+        position: absolute;
+        z-index: 1;
+        bottom: 125%;
+        left: 50%;
+        margin-left: -100px;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .tooltip:hover .tooltiptext {
+        visibility: visible;
+        opacity: 1;
+    }
+{% endblock %}
+
+{% block content %}
     <form method="post">
         {% csrf_token %}
         
@@ -96,9 +96,6 @@
             </div>
         </div>
 
-        <button type="submit">Save Configuration</button>
+        <button type="submit" class="button button-primary">Save Configuration</button>
     </form>
-
-    <p><a href="{% url 'featurama:pipelines' %}">Back to Pipelines</a></p>
-</body>
-</html> 
+{% endblock %} 

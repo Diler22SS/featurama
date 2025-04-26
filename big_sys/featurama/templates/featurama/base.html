@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Featurama{% endblock %}</title>
+    <style>
+        /* Base styles */
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            margin-bottom: 1.5rem;
+            color: #2196F3;
+        }
+        h2 {
+            color: #424242;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .button-group {
+            margin: 1rem 0;
+            display: flex;
+            gap: 1rem;
+        }
+        .button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button-primary {
+            background-color: #2196F3;
+            color: white;
+        }
+        .button-secondary {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        /* Additional styles specific to pages can be added in separate blocks */
+        {% block additional_styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    <header>
+        <h1>{% block header %}Featurama{% endblock %}</h1>
+    </header>
+    
+    <main>
+        {% block content %}
+        <!-- Page content goes here -->
+        {% endblock %}
+    </main>
+    
+    <footer>
+        {% block footer %}
+        <p><a href="{% url 'featurama:pipelines' %}">Back to pipelines</a></p>
+        {% endblock %}
+    </footer>
+    
+    {% block scripts %}
+    <!-- Page scripts go here -->
+    {% endblock %}
+</body>
+</html> 

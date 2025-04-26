@@ -4,13 +4,16 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpRequest, HttpResponse
 from .models import Pipeline
 from django.core.files.base import ContentFile
-from .utils import read_dataset_file, clean_up_temp_file
+from .utils import (
+    read_dataset_file, clean_up_temp_file, validate_dataset
+)
 from .services import MethodsService, PipelineResultsService, DatasetService
 from .forms import (
     DatasetUploadForm, TargetVariableForm, 
     PipelineConfigForm, FeatureSelectionForm
 )
 import os
+import pandas as pd
 
 
 def pipelines(request: HttpRequest) -> HttpResponse:
@@ -180,8 +183,69 @@ def _handle_feature_selection(
     # Process the selected features
     selected_features = request.POST.getlist('selected_features')
     
+    if not selected_features:
+        return render(
+            request,
+            'featurama/upload_data.html',
+            {
+                'pipeline': pipeline,
+                'features': features,
+                'target_variable': target_variable,
+                'feature_form': FeatureSelectionForm(
+                    features=features,
+                    target_variable=target_variable
+                ),
+                'step': 'feature_selection',
+                'error': "Please select at least one feature."
+            }
+        )
+    
     try:
-        # Read the temporary file
+        # Load the dataset for validation
+        if temp_file_path.endswith('.csv'):
+            df = pd.read_csv(temp_file_path)
+        elif temp_file_path.endswith('.xlsx'):
+            # Use openpyxl for .xlsx files
+            df = pd.read_excel(temp_file_path, engine='openpyxl')
+        elif temp_file_path.endswith('.xls'):
+            # Use xlrd for .xls files
+            df = pd.read_excel(temp_file_path, engine='xlrd')
+        else:
+            # Get extension from original filename
+            _, ext = os.path.splitext(temp_file_name.lower())
+            if ext == '.csv':
+                df = pd.read_csv(temp_file_path)
+            elif ext == '.xlsx':
+                df = pd.read_excel(temp_file_path, engine='openpyxl')
+            elif ext == '.xls':
+                df = pd.read_excel(temp_file_path, engine='xlrd')
+            else:
+                # Try to infer - this might still fail
+                df = pd.read_csv(temp_file_path)
+        
+        # Validate dataset against requirements
+        is_valid, error_message = validate_dataset(
+            df, target_variable, selected_features
+        )
+        
+        if not is_valid:
+            return render(
+                request,
+                'featurama/upload_data.html',
+                {
+                    'pipeline': pipeline,
+                    'features': features,
+                    'target_variable': target_variable,
+                    'feature_form': FeatureSelectionForm(
+                        features=features,
+                        target_variable=target_variable
+                    ),
+                    'step': 'feature_selection',
+                    'error': error_message
+                }
+            )
+
+        # Read the temporary file for dataset creation
         with open(temp_file_path, 'rb') as f:
             file_content = f.read()
 
@@ -216,6 +280,11 @@ def _handle_feature_selection(
             pipeline_id=pipeline.pk
         )
     except Exception as e:
+        # Log the exact error for debugging
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error processing file: {str(e)}\n{error_details}")
+        
         return render(
             request, 
             'featurama/upload_data.html',
@@ -263,13 +332,13 @@ def results_summary(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     pipeline = get_object_or_404(Pipeline, pk=pipeline_id)
     
     # Get all related data using our service
-    related_pipelines = PipelineResultsService.get_related_pipelines(pipeline)
-    results_context = PipelineResultsService.get_pipeline_results_context(pipeline)
+    related = PipelineResultsService.get_related_pipelines(pipeline)
+    results = PipelineResultsService.get_pipeline_results_context(pipeline)
     
     context = {
         'pipeline': pipeline,
-        'related_pipelines': related_pipelines,
-        **results_context
+        'related_pipelines': related,
+        **results
     }
     
     return render(request, 'featurama/results_summary.html', context)

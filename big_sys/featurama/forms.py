@@ -11,9 +11,13 @@ from .services import MethodsService
 class DatasetUploadForm(forms.Form):
     """Form for validating dataset file uploads."""
     
+    ALLOWED_EXTENSIONS = ['csv', 'xlsx', 'xls']
+    
     dataset_file = forms.FileField(
         required=True,
-        widget=forms.ClearableFileInput(attrs={'accept': '.csv,.xlsx,.xls'})
+        widget=forms.ClearableFileInput(
+            attrs={'accept': '.csv,.xlsx,.xls'}
+        )
     )
     
     def clean_dataset_file(self):
@@ -22,9 +26,10 @@ class DatasetUploadForm(forms.Form):
         
         # Check file extension
         extension = file.name.split('.')[-1].lower()
-        if extension not in ['csv', 'xlsx', 'xls']:
+        if extension not in self.ALLOWED_EXTENSIONS:
             raise forms.ValidationError(
-                "Unsupported file format. Please upload CSV or Excel files."
+                f"Unsupported file format. Please upload one of: "
+                f"{', '.join(self.ALLOWED_EXTENSIONS)}."
             )
             
         # Check file size (10MB max)
@@ -59,7 +64,9 @@ class FeatureSelectionForm(forms.Form):
     
     selected_features = forms.MultipleChoiceField(
         required=False,
-        widget=forms.CheckboxSelectMultiple(attrs={'class': 'feature-checkbox'})
+        widget=forms.CheckboxSelectMultiple(
+            attrs={'class': 'feature-checkbox'}
+        )
     )
     
     def __init__(self, *args, features=None, target_variable=None, **kwargs):
@@ -74,7 +81,8 @@ class FeatureSelectionForm(forms.Form):
         if features and target_variable:
             # Filter out the target variable from selectable features
             available_features = [f for f in features if f != target_variable]
-            self.fields['selected_features'].choices = [(f, f) for f in available_features]
+            choices = [(f, f) for f in available_features]
+            self.fields['selected_features'].choices = choices
             
             # Store original features for reference
             self.all_features = features

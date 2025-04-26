@@ -54,6 +54,33 @@ class TargetVariableForm(forms.Form):
             ] + [(f, f) for f in features]
 
 
+class FeatureSelectionForm(forms.Form):
+    """Form for selecting features from a dataset."""
+    
+    selected_features = forms.MultipleChoiceField(
+        required=False,
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'feature-checkbox'})
+    )
+    
+    def __init__(self, *args, features=None, target_variable=None, **kwargs):
+        """Initialize the form with available features.
+        
+        Args:
+            features: List of all available features in the dataset
+            target_variable: Target variable to exclude from selection options
+        """
+        super().__init__(*args, **kwargs)
+        
+        if features and target_variable:
+            # Filter out the target variable from selectable features
+            available_features = [f for f in features if f != target_variable]
+            self.fields['selected_features'].choices = [(f, f) for f in available_features]
+            
+            # Store original features for reference
+            self.all_features = features
+            self.target_variable = target_variable
+
+
 class PipelineConfigForm(forms.ModelForm):
     """Form for configuring pipeline methods."""
     

@@ -6,7 +6,10 @@ from .models import Pipeline
 from django.core.files.base import ContentFile
 from .utils import read_dataset_file, clean_up_temp_file
 from .services import MethodsService, PipelineResultsService, DatasetService
-from .forms import DatasetUploadForm, TargetVariableForm, PipelineConfigForm
+from .forms import (
+    DatasetUploadForm, TargetVariableForm, 
+    PipelineConfigForm, FeatureSelectionForm
+)
 import os
 
 
@@ -34,6 +37,8 @@ def upload_data(request: HttpRequest, pipeline_id: int) -> HttpResponse:
             return _handle_file_upload(request, pipeline)
         elif 'target_variable' in request.POST:
             return _handle_target_selection(request, pipeline)
+        elif 'selected_features' in request.POST:
+            return _handle_feature_selection(request, pipeline)
     
     return render(
         request, 
@@ -70,6 +75,9 @@ def _handle_file_upload(
         features = df.columns.tolist()
         dataset_name = os.path.splitext(dataset_file.name)[0]
         
+        # Store features in session for later use
+        request.session['dataset_features'] = features
+        
         # Create form for target variable selection
         target_form = TargetVariableForm(features=features)
         
@@ -80,7 +88,8 @@ def _handle_file_upload(
                 'pipeline': pipeline,
                 'features': features,
                 'dataset_name': dataset_name,
-                'target_form': target_form
+                'target_form': target_form,
+                'step': 'target_selection'
             }
         )
     except Exception as e:
@@ -97,7 +106,7 @@ def _handle_file_upload(
 def _handle_target_selection(
     request: HttpRequest, pipeline: Pipeline
 ) -> HttpResponse:
-    """Process the target variable selection and create dataset."""
+    """Process the target variable selection."""
     form = TargetVariableForm(request.POST)
     
     if not form.is_valid():
@@ -110,30 +119,77 @@ def _handle_target_selection(
             }
         )
     
-    # Get the temporary file info from session
+    # Get the features from session
+    features = request.session.get('dataset_features', [])
+    if not features:
+        return render(
+            request,
+            'featurama/upload_data.html',
+            {
+                'pipeline': pipeline,
+                'error': "Session expired. Please upload the file again."
+            }
+        )
+    
+    # Get the selected target variable
+    target_variable = form.cleaned_data['target_variable']
+    
+    # Store target variable in session
+    request.session['target_variable'] = target_variable
+    
+    # Create form for feature selection
+    feature_form = FeatureSelectionForm(
+        features=features,
+        target_variable=target_variable
+    )
+    
+    return render(
+        request,
+        'featurama/upload_data.html',
+        {
+            'pipeline': pipeline,
+            'features': features,
+            'target_variable': target_variable,
+            'feature_form': feature_form,
+            'step': 'feature_selection'
+        }
+    )
+
+
+def _handle_feature_selection(
+    request: HttpRequest, pipeline: Pipeline
+) -> HttpResponse:
+    """Process feature selection and create dataset."""
+    
+    # Get data from session
     temp_file_path = request.session.get('temp_file_path')
     temp_file_name = request.session.get('temp_file_name')
-
-    if not temp_file_path or not temp_file_name:
+    target_variable = request.session.get('target_variable')
+    features = request.session.get('dataset_features', [])
+    
+    if not all([temp_file_path, temp_file_name, target_variable, features]):
         return render(
             request, 
             'featurama/upload_data.html', 
             {
                 'pipeline': pipeline,
-                'error': "File upload session expired. Please upload again."
+                'error': "Session expired. Please upload the file again."
             }
         )
-
+    
+    # Process the selected features
+    selected_features = request.POST.getlist('selected_features')
+    
     try:
         # Read the temporary file
         with open(temp_file_path, 'rb') as f:
             file_content = f.read()
 
-        # Create dataset with the file and target variable
-        target_variable = form.cleaned_data['target_variable']
+        # Create dataset with the file, target variable, and selected features
         dataset = DatasetService.create_dataset(
             name=os.path.splitext(temp_file_name)[0],
-            target_variable=target_variable
+            target_variable=target_variable,
+            selected_features=selected_features
         )
 
         # Save the file to the dataset
@@ -148,6 +204,13 @@ def _handle_target_selection(
 
         # Clean up
         clean_up_temp_file(request)
+        
+        # Clean up session
+        if 'dataset_features' in request.session:
+            del request.session['dataset_features']
+        if 'target_variable' in request.session:
+            del request.session['target_variable']
+            
         return redirect(
             'featurama:configure_pipeline', 
             pipeline_id=pipeline.pk
@@ -200,10 +263,13 @@ def results_summary(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     pipeline = get_object_or_404(Pipeline, pk=pipeline_id)
     
     # Get all related data using our service
+    related_pipelines = PipelineResultsService.get_related_pipelines(pipeline)
+    results_context = PipelineResultsService.get_pipeline_results_context(pipeline)
+    
     context = {
         'pipeline': pipeline,
-        'related_pipelines': PipelineResultsService.get_related_pipelines(pipeline),
-        **PipelineResultsService.get_pipeline_results_context(pipeline)
+        'related_pipelines': related_pipelines,
+        **results_context
     }
     
     return render(request, 'featurama/results_summary.html', context)

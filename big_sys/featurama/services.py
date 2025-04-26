@@ -72,7 +72,8 @@ class PipelineResultsService:
         Returns:
             List of selected feature names
         """
-        # Placeholder for actual feature selection
+        if pipeline.dataset and pipeline.dataset.user_selected_features:
+            return pipeline.dataset.user_selected_features
         return []
     
     @staticmethod
@@ -132,17 +133,37 @@ class DatasetService:
     """Service for dataset operations."""
     
     @staticmethod
-    def create_dataset(name: str, target_variable: str) -> Dataset:
+    def create_dataset(
+        name: str, target_variable: str, selected_features: List[str] = None
+    ) -> Dataset:
         """Create a new dataset.
         
         Args:
             name: Name for the dataset
             target_variable: Target variable name
+            selected_features: List of features selected by the user
             
         Returns:
             The created Dataset object
         """
         return Dataset.objects.create(
             name=name,
-            target_variable=target_variable
-        ) 
+            target_variable=target_variable,
+            user_selected_features=selected_features or []
+        )
+    
+    @staticmethod
+    def update_selected_features(
+        dataset: Dataset, selected_features: List[str]
+    ) -> Dataset:
+        """Update the selected features for a dataset.
+        
+        Args:
+            dataset: The dataset to update
+            selected_features: List of features selected by the user
+            
+        Returns:
+            The updated Dataset object
+        """
+        dataset.user_selected_features = selected_features
+        dataset.save() 

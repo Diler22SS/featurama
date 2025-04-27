@@ -116,7 +116,8 @@ class FeatureSelectionResult(models.Model):
     
     Attributes:
         pipeline: Foreign key to the associated Pipeline
-        selected_features: JSON field storing features selected by the algorithm
+        selected_features: JSON field storing features selected by the 
+            algorithm
         created_at: When the result was created
     """
     
@@ -137,3 +138,77 @@ class FeatureSelectionResult(models.Model):
     def __str__(self) -> str:
         """Return a string representation of the result."""
         return f"Selection Result for Pipeline #{self.pipeline.id}"
+
+
+class PerformanceMetric(models.Model):
+    """Performance metrics model.
+    
+    Stores evaluation metrics for a pipeline's machine learning model.
+    
+    Attributes:
+        pipeline: Foreign key to the associated Pipeline
+        roc_auc: ROC AUC score of the model
+        accuracy: Accuracy score of the model
+        f1_score: F1 score of the model
+        created_at: When the metrics were created
+    """
+    
+    pipeline = models.ForeignKey(
+        Pipeline,
+        on_delete=models.CASCADE,
+        related_name='performance_metrics'
+    )
+    roc_auc = models.FloatField(null=True, blank=True)
+    accuracy = models.FloatField(null=True, blank=True)
+    f1_score = models.FloatField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        """Meta options for the PerformanceMetric model."""
+        ordering = ['-created_at']
+        verbose_name = "Performance Metric"
+        verbose_name_plural = "Performance Metrics"
+    
+    def __str__(self) -> str:
+        """Return a string representation of the metrics."""
+        return f"Metrics for Pipeline #{self.pipeline.id}"
+
+
+class ShapExplanation(models.Model):
+    """SHAP explanation model.
+    
+    Stores SHAP explanation visuals for a pipeline's model.
+    
+    Attributes:
+        pipeline: Foreign key to the associated Pipeline
+        global_explanation_image: Image for global feature importance
+        local_explanation_image: Image for local feature importance
+        created_at: When the explanation was created
+    """
+    
+    pipeline = models.ForeignKey(
+        Pipeline,
+        on_delete=models.CASCADE,
+        related_name='shap_explanations'
+    )
+    global_explanation_image = models.ImageField(
+        upload_to='shap_explanations/',
+        null=True,
+        blank=True
+    )
+    local_explanation_image = models.ImageField(
+        upload_to='shap_explanations/',
+        null=True,
+        blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        """Meta options for the ShapExplanation model."""
+        ordering = ['-created_at']
+        verbose_name = "SHAP Explanation"
+        verbose_name_plural = "SHAP Explanations"
+    
+    def __str__(self) -> str:
+        """Return a string representation of the explanation."""
+        return f"SHAP Explanation for Pipeline #{self.pipeline.id}"

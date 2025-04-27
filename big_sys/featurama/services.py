@@ -5,7 +5,10 @@ separating it from the view functions and keeping controllers thin.
 """
 
 from typing import Dict, List, Optional, Any
-from .models import Pipeline, Dataset, FeatureSelectionResult
+from .models import (
+    Pipeline, Dataset, FeatureSelectionResult, 
+    PerformanceMetric, ShapExplanation
+)
 
 
 class MethodsService:
@@ -55,7 +58,22 @@ class PipelineResultsService:
         Returns:
             Dictionary with metrics
         """
-        # Placeholder for actual metrics calculation
+        # Try to get metrics from the database
+        try:
+            metric = PerformanceMetric.objects.filter(
+                pipeline=pipeline
+            ).order_by('-created_at').first()
+            
+            if metric:
+                return {
+                    'roc_auc': metric.roc_auc,
+                    'accuracy': metric.accuracy,
+                    'f1': metric.f1_score
+                }
+        except PerformanceMetric.DoesNotExist:
+            pass
+            
+        # Return empty metrics if none found
         return {
             'roc_auc': None,
             'accuracy': None,
@@ -113,7 +131,21 @@ class PipelineResultsService:
         Returns:
             Dictionary with plot URLs
         """
-        # Placeholder for actual SHAP plot generation
+        # Try to get SHAP plots from the database
+        try:
+            shap = ShapExplanation.objects.filter(
+                pipeline=pipeline
+            ).order_by('-created_at').first()
+            
+            if shap:
+                return {
+                    'global': shap.global_explanation_image.url if shap.global_explanation_image else None,
+                    'local': shap.local_explanation_image.url if shap.local_explanation_image else None
+                }
+        except ShapExplanation.DoesNotExist:
+            pass
+        
+        # Return empty plot URLs if none found
         return {
             'global': None,
             'local': None

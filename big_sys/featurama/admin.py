@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import Pipeline, Dataset, FeatureSelectionResult
+from .models import (
+    Pipeline, Dataset, FeatureSelectionResult,
+    PerformanceMetric, ShapExplanation
+)
 
 
 @admin.register(Dataset)
@@ -30,6 +33,28 @@ class PipelineAdmin(admin.ModelAdmin):
 @admin.register(FeatureSelectionResult)
 class FeatureSelectionResultAdmin(admin.ModelAdmin):
     list_display = ('id', 'pipeline', 'created_at', 'selected_features')
+    list_filter = ('created_at',)
+    search_fields = ('id', 'pipeline__id')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(PerformanceMetric)
+class PerformanceMetricAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'pipeline', 'created_at', 
+        'roc_auc', 'accuracy', 'f1_score'
+    )
+    list_filter = ('created_at',)
+    search_fields = ('id', 'pipeline__id')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(ShapExplanation)
+class ShapExplanationAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'pipeline', 'created_at', 
+        'global_explanation_image', 'local_explanation_image'
+    )
     list_filter = ('created_at',)
     search_fields = ('id', 'pipeline__id')
     date_hierarchy = 'created_at'

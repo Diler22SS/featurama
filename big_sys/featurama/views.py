@@ -299,6 +299,10 @@ def configure_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     """Configure pipeline methods and parameters."""
     pipeline = get_object_or_404(Pipeline, pk=pipeline_id)
     
+    # Check if the pipeline has been processed before
+    # If it has all methods configured, we consider it as having results
+    has_results = pipeline.is_configured()
+    
     if request.method == 'POST':
         form = PipelineConfigForm(request.POST, instance=pipeline)
         if form.is_valid():
@@ -312,6 +316,7 @@ def configure_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
         context = {
             'pipeline': pipeline,
             'form': form,
+            'has_results': has_results,
             **MethodsService.get_available_methods()
         }
         return render(request, 'featurama/configure_pipeline.html', context)
@@ -321,6 +326,7 @@ def configure_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     context = {
         'pipeline': pipeline,
         'form': form,
+        'has_results': has_results,
         **MethodsService.get_available_methods()
     }
     

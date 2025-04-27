@@ -10,7 +10,7 @@
             <p style="color: red;">{{ error }}</p>
         </div>
     {% endif %}
-
+    
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         
@@ -31,16 +31,16 @@
         <!-- Step 2: Target Variable Selection -->
         {% elif step == 'target_selection' %}
             <div class="section">
-                <h2>Dataset: {{ dataset_name }}</h2>
-                <div>
-                    <label for="target_variable">Select Target Variable:</label>
-                    <select id="target_variable" name="target_variable" required>
-                        <option value="">Select a target variable</option>
-                        {% for feature in features %}
-                        <option value="{{ feature }}">{{ feature }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+            <h2>Dataset: {{ dataset_name }}</h2>
+            <div>
+                <label for="target_variable">Select Target Variable:</label>
+                <select id="target_variable" name="target_variable" required>
+                    <option value="">Select a target variable</option>
+                    {% for feature in features %}
+                    <option value="{{ feature }}">{{ feature }}</option>
+                    {% endfor %}
+                </select>
+            </div>
                 <button type="submit" class="button button-primary">Continue to Feature Selection</button>
             </div>
         

@@ -31,7 +31,7 @@ class Dataset(models.Model):
 
     def __str__(self) -> str:
         """Return a string representation of the dataset."""
-        return self.name or f"Dataset #{self.pk}"
+        return str(self.name or f"Dataset #{self.pk}")
 
     def get_filename(self) -> str:
         """Return just the filename without path."""
@@ -107,3 +107,33 @@ class Pipeline(models.Model):
         if not self.is_configured():
             return "Awaiting configuration"
         return "Ready for execution"
+
+
+class FeatureSelectionResult(models.Model):
+    """Feature selection result model.
+    
+    Stores the results of a feature selection process for a pipeline.
+    
+    Attributes:
+        pipeline: Foreign key to the associated Pipeline
+        selected_features: JSON field storing features selected by the algorithm
+        created_at: When the result was created
+    """
+    
+    pipeline = models.ForeignKey(
+        Pipeline,
+        on_delete=models.CASCADE,
+        related_name='feature_selection_results'
+    )
+    selected_features = models.JSONField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        """Meta options for the FeatureSelectionResult model."""
+        ordering = ['-created_at']
+        verbose_name = "Feature Selection Result"
+        verbose_name_plural = "Feature Selection Results"
+    
+    def __str__(self) -> str:
+        """Return a string representation of the result."""
+        return f"Selection Result for Pipeline #{self.pipeline.id}"

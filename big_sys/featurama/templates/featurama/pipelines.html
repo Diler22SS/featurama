@@ -33,19 +33,19 @@
 
 {% block content %}
     <div class="section">
-        <form method="post">
-            {% csrf_token %}
+    <form method="post">
+        {% csrf_token %}
             <button type="submit" class="button button-primary">
                 Create New Pipeline
             </button>
-        </form>
+    </form>
     </div>
 
     <div class="section">
         <h2>Your Pipelines</h2>
         {% if pipelines %}
             <ul class="pipeline-list">
-                {% for pipeline in pipelines %}
+        {% for pipeline in pipelines %}
                     <li class="pipeline-item">
                         <div class="pipeline-info">
                             <h3>Pipeline #{{ pipeline.id }}</h3>
@@ -88,9 +88,9 @@
                                 Delete
                             </a>
                         </div>
-                    </li>
-                {% endfor %}
-            </ul>
+            </li>
+        {% endfor %}
+    </ul>
         {% else %}
             <div class="empty-list">
                 <p>You don't have any pipelines yet. Create one to get started!</p>

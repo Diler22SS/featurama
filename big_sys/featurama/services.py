@@ -5,7 +5,7 @@ separating it from the view functions and keeping controllers thin.
 """
 
 from typing import Dict, List, Optional, Any
-from .models import Pipeline, Dataset
+from .models import Pipeline, Dataset, FeatureSelectionResult
 
 
 class MethodsService:
@@ -72,6 +72,33 @@ class PipelineResultsService:
         Returns:
             List of selected feature names
         """
+        # First try to get algorithmic selected features
+        try:
+            result = FeatureSelectionResult.objects.filter(
+                pipeline=pipeline
+            ).order_by('-created_at').first()
+            
+            if result and result.selected_features:
+                return result.selected_features
+        except FeatureSelectionResult.DoesNotExist:
+            pass
+        
+        # Fall back to user selected features if algorithm hasn't run
+        if pipeline.dataset and pipeline.dataset.user_selected_features:
+            return pipeline.dataset.user_selected_features
+        
+        return []
+    
+    @staticmethod
+    def get_user_selected_features(pipeline: Pipeline) -> List[str]:
+        """Get user selected features for a pipeline.
+        
+        Args:
+            pipeline: The pipeline object
+            
+        Returns:
+            List of user selected feature names
+        """
         if pipeline.dataset and pipeline.dataset.user_selected_features:
             return pipeline.dataset.user_selected_features
         return []
@@ -108,6 +135,7 @@ class PipelineResultsService:
         return {
             'metrics': cls.get_pipeline_metrics(pipeline),
             'selected_features': cls.get_selected_features(pipeline),
+            'user_selected_features': cls.get_user_selected_features(pipeline),
             'shap_plots': cls.get_shap_plots(pipeline)
         }
     

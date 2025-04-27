@@ -62,7 +62,7 @@
                 <option value="">Select a filter method</option>
                 {% for method, description in filter_methods.items %}
                 <option value="{{ method }}" {% if pipeline.filter_method == method %}selected{% endif %}>
-                    {{ method|title }}
+                    {{ description }}
                 </option>
                 {% endfor %}
             </select>
@@ -77,7 +77,7 @@
                 <option value="">Select a wrapper method</option>
                 {% for method, description in wrapper_methods.items %}
                 <option value="{{ method }}" {% if pipeline.wrapper_method == method %}selected{% endif %}>
-                    {{ method|title }}
+                    {{ description }}
                 </option>
                 {% endfor %}
             </select>
@@ -92,7 +92,7 @@
                 <option value="">Select a model method</option>
                 {% for method, description in model_methods.items %}
                 <option value="{{ method }}" {% if pipeline.model_method == method %}selected{% endif %}>
-                    {{ method|title }}
+                    {{ description }}
                 </option>
                 {% endfor %}
             </select>

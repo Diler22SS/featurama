@@ -12,6 +12,7 @@ from .forms import (
     DatasetUploadForm, TargetVariableForm, 
     PipelineConfigForm, FeatureSelectionForm
 )
+from .algorithms import run_feature_selection
 import os
 import pandas as pd
 
@@ -307,6 +308,10 @@ def configure_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
         form = PipelineConfigForm(request.POST, instance=pipeline)
         if form.is_valid():
             form.save()
+            
+            # Run feature selection algorithm after saving the configuration
+            run_feature_selection(pipeline)
+            
             return redirect(
                 'featurama:results_summary', 
                 pipeline_id=pipeline.pk

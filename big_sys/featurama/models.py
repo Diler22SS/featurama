@@ -5,6 +5,8 @@ datasets, pipelines, and their relationships.
 """
 
 from django.db import models
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 import os
 
 
@@ -49,6 +51,16 @@ class Dataset(models.Model):
     def is_csv(self) -> bool:
         """Check if the file is a CSV."""
         return self.get_file_extension() == '.csv'
+    
+    def delete(self, *args, **kwargs):
+        """Override delete to remove the associated file."""
+        # Delete the file from storage
+        if self.file:
+            if os.path.isfile(self.file.path):
+                os.remove(self.file.path)
+        
+        # Call the "real" delete() method
+        super().delete(*args, **kwargs)
 
 
 class Pipeline(models.Model):
@@ -212,3 +224,41 @@ class ShapExplanation(models.Model):
     def __str__(self) -> str:
         """Return a string representation of the explanation."""
         return f"SHAP Explanation for Pipeline #{self.pipeline.id}"
+    
+    def delete(self, *args, **kwargs):
+        """Override delete to remove the associated images."""
+        # Delete the global explanation image if it exists
+        if self.global_explanation_image:
+            if os.path.isfile(self.global_explanation_image.path):
+                os.remove(self.global_explanation_image.path)
+        
+        # Delete the local explanation image if it exists
+        if self.local_explanation_image:
+            if os.path.isfile(self.local_explanation_image.path):
+                os.remove(self.local_explanation_image.path)
+        
+        # Call the "real" delete() method
+        super().delete(*args, **kwargs)
+
+
+# Signal handlers to handle file deletion on model deletion
+@receiver(pre_delete, sender=Dataset)
+def delete_dataset_files(sender, instance, **kwargs):
+    """Delete files when a Dataset is deleted."""
+    if instance.file:
+        if os.path.isfile(instance.file.path):
+            os.remove(instance.file.path)
+
+
+@receiver(pre_delete, sender=ShapExplanation)
+def delete_shap_files(sender, instance, **kwargs):
+    """Delete image files when a ShapExplanation is deleted."""
+    # Delete global explanation image
+    if instance.global_explanation_image:
+        if os.path.isfile(instance.global_explanation_image.path):
+            os.remove(instance.global_explanation_image.path)
+    
+    # Delete local explanation image
+    if instance.local_explanation_image:
+        if os.path.isfile(instance.local_explanation_image.path):
+            os.remove(instance.local_explanation_image.path)

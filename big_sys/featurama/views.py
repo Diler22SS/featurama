@@ -359,14 +359,26 @@ def delete_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     """Delete a pipeline and redirect to the pipelines list view."""
     pipeline = get_object_or_404(Pipeline, pk=pipeline_id)
     
-    # Delete associated dataset if no other pipelines use it
+    # Delete all related objects that might have files
+    # ShapExplanation objects will delete their image files
+    shap_explanations = pipeline.shap_explanations.all()
+    for shap in shap_explanations:
+        shap.delete()
+    
+    # Delete feature selection results (no files to remove)
+    pipeline.feature_selection_results.all().delete()
+    
+    # Delete performance metrics (no files to remove)
+    pipeline.performance_metrics.all().delete()
+    
+    # Check if we should delete the dataset too
     if pipeline.dataset:
         other_pipelines = Pipeline.objects.filter(
             dataset=pipeline.dataset
         ).exclude(pk=pipeline.pk).count()
         
         if other_pipelines == 0:
-            # Safe to delete the dataset as well
+            # Safe to delete the dataset as well (will delete its file)
             dataset = pipeline.dataset
             pipeline.delete()
             dataset.delete()

@@ -11,39 +11,86 @@
         </div>
     {% endif %}
     
-    <form method="post" enctype="multipart/form-data">
+    <!-- Step indicator -->
+    <div class="step-indicator">
+        <div class="step {% if not step %}active{% endif %}">
+            <span class="step-number">1</span>
+            <span class="step-label">Upload File</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step {% if step == 'target_selection' %}active{% endif %}">
+            <span class="step-number">2</span>
+            <span class="step-label">Select Target</span>
+        </div>
+        <div class="step-divider"></div>
+        <div class="step {% if step == 'feature_selection' %}active{% endif %}">
+            <span class="step-number">3</span>
+            <span class="step-label">Select Features</span>
+        </div>
+    </div>
+    
+    <form method="post" enctype="multipart/form-data" id="dataUploadForm">
         {% csrf_token %}
         
         <!-- Step 1: File Upload -->
         {% if not step %}
             <div class="section">
                 <h2>Upload Dataset File</h2>
-                <div>
-                    <label for="dataset_file">Choose a file:</label>
-                    <input type="file" id="dataset_file" name="dataset_file" accept=".csv,.xlsx,.xls" required>
+                <div class="file-upload-container">
+                    <label for="dataset_file" class="file-upload-label">
+                        <div class="file-upload-icon">
+                            <span class="file-icon">📁</span>
+                            <span class="upload-text">Choose a file or drag it here</span>
+                        </div>
+                        <input type="file" id="dataset_file" name="dataset_file" accept=".csv,.xlsx,.xls" required class="file-input">
+                    </label>
+                    <div id="file-preview" class="file-preview"></div>
                 </div>
                 <p class="description">
                     Upload a CSV or Excel file containing your dataset.
+                    <br>Make sure your data is properly formatted with headers.
                 </p>
-                <button type="submit" class="button button-primary">Upload Dataset</button>
+                <div class="button-group">
+                    <button type="submit" class="button button-primary" id="uploadButton" disabled>Upload Dataset</button>
+                    <a href="{% url 'featurama:pipelines' %}" class="button button-secondary">Cancel</a>
+                </div>
             </div>
         
         <!-- Step 2: Target Variable Selection -->
         {% elif step == 'target_selection' %}
             <div class="section">
-            <h2>Dataset: {{ dataset_name }}</h2>
-            <div>
-                <label for="target_variable">Select Target Variable:</label>
-                <select id="target_variable" name="target_variable" required>
-                    <option value="">Select a target variable</option>
-                    {% for feature in features %}
-                    <option value="{{ feature }}">{{ feature }}</option>
-                    {% endfor %}
-                </select>
+                <h2>Dataset: {{ dataset_name }}</h2>
+                <div class="form-group">
+                    <label for="target_variable">Select Target Variable:</label>
+                    <select id="target_variable" name="target_variable" required>
+                        <option value="">Select a target variable</option>
+                        {% for feature in features %}
+                        <option value="{{ feature }}" 
+                            {% if feature in binary_variables %}class="binary-option"{% endif %}
+                            {% if binary_variables and feature == binary_variables.0 %}selected{% endif %}>
+                            {{ feature }}{% if feature in binary_variables %} (binary){% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <p class="input-help">Select the binary classification target variable (0/1)</p>
+                    
+                    {% if binary_variables %}
+                    <div class="binary-variables-suggestion">
+                        <h4>Suggested Binary Variables:</h4>
+                        <div class="binary-vars-list">
+                            {% for var in binary_variables %}
+                            <div class="binary-var-item" data-value="{{ var }}">{{ var }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="button-group">
+                    <button type="submit" class="button button-primary">Continue to Feature Selection</button>
+                    <!-- Back button with hidden field to go back to file upload -->
+                    <button type="submit" name="go_back" value="upload" class="button button-secondary">Back to File Upload</button>
+                </div>
             </div>
-                <button type="submit" class="button button-primary">Continue to Feature Selection</button>
-            </div>
-        
         <!-- Step 3: Feature Selection -->
         {% elif step == 'feature_selection' %}
             <div class="section">
@@ -54,23 +101,31 @@
                     Features not selected will be ignored during processing.
                 </p>
                 
+                <div class="feature-selection-controls">
+                    <div class="search-container">
+                        <input type="text" id="feature-search" placeholder="Search features..." class="search-input">
+                    </div>
+                </div>
+                
                 <div class="feature-selection-container">
                     <div class="feature-list-container">
-                        <h3>All dataset columns</h3>
-                        <div class="feature-list">
+                        <h3>Available Features</h3>
+                        <div class="selection-header">
                             <label class="select-all-container">
                                 <input type="checkbox" id="select-all-available" class="select-all">
-                                <span>All</span>
+                                <span>Select All</span>
                             </label>
-                            
+                            <span class="feature-count" id="available-count">0 features</span>
+                        </div>
+                        <div class="feature-list" id="available-features-list">
                             {% for choice in feature_form.selected_features.field.choices %}
-                            <div class="feature-item">
+                            <div class="feature-item" data-feature-name="{{ choice.1 }}">
                                 <label>
                                     <input type="checkbox" 
                                            name="available_feature" 
                                            value="{{ choice.0 }}" 
                                            class="available-feature-checkbox">
-                                    {{ choice.1 }}
+                                    <span class="feature-label">{{ choice.1 }}</span>
                                 </label>
                             </div>
                             {% endfor %}
@@ -78,17 +133,22 @@
                     </div>
                     
                     <div class="transfer-buttons">
-                        <button type="button" id="move-to-selected" class="transfer-button">&rarr;</button>
-                        <button type="button" id="move-to-available" class="transfer-button">&larr;</button>
+                        <button type="button" id="move-to-selected" class="transfer-button" title="Add selected features">→</button>
+                        <button type="button" id="move-all-to-selected" class="transfer-button" title="Add all features">»</button>
+                        <button type="button" id="move-all-to-available" class="transfer-button" title="Remove all features">«</button>
+                        <button type="button" id="move-to-available" class="transfer-button" title="Remove selected features">←</button>
                     </div>
                     
                     <div class="feature-list-container">
-                        <h3>Preselected features</h3>
-                        <div class="feature-list" id="selected-features-list">
+                        <h3>Selected Features</h3>
+                        <div class="selection-header">
                             <label class="select-all-container">
                                 <input type="checkbox" id="select-all-selected" class="select-all">
-                                <span>All</span>
+                                <span>Select All</span>
                             </label>
+                            <span class="feature-count" id="selected-count">0 features</span>
+                        </div>
+                        <div class="feature-list" id="selected-features-list">
                             <!-- Selected features will appear here -->
                         </div>
                     </div>
@@ -97,8 +157,12 @@
                 <!-- Hidden input to store selected features -->
                 <div id="selected-features-container"></div>
                 
+                <div class="validation-message" id="validation-message"></div>
+                
                 <div class="button-group">
-                    <button type="submit" class="button button-primary">Complete Upload</button>
+                    <button type="submit" class="button button-primary" id="complete-button">Complete Upload</button>
+                    <!-- Back button with hidden field to go back to target selection -->
+                    <button type="submit" name="go_back" value="target" class="button button-secondary">Back to Target Selection</button>
                 </div>
             </div>
         {% endif %}
@@ -119,6 +183,143 @@
     .error-section {
         background-color: #ffebee;
         border-color: #ffcdd2;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    /* Step indicator */
+    .step-indicator {
+        display: flex;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100px;
+    }
+    .step-number {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background-color: #e0e0e0;
+        color: #757575;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+    }
+    .step.active .step-number {
+        background-color: #2196F3;
+        color: white;
+    }
+    .step-divider {
+        flex: 1;
+        height: 2px;
+        background-color: #e0e0e0;
+        margin: 0 0.5rem;
+    }
+    .step-label {
+        font-size: 0.8rem;
+        color: #757575;
+    }
+    .step.active .step-label {
+        color: #2196F3;
+        font-weight: bold;
+    }
+    /* Binary variable suggestions */
+    .binary-option {
+        font-weight: bold;
+        color: #2196F3;
+    }
+    .binary-variables-suggestion {
+        margin-top: 1.5rem;
+        padding: 1rem;
+        background-color: #e3f2fd;
+        border-radius: 4px;
+        border-left: 4px solid #2196F3;
+    }
+    .binary-variables-suggestion h4 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+        color: #0d47a1;
+        font-size: 1rem;
+    }
+    .binary-vars-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    .binary-var-item {
+        padding: 0.5rem 0.75rem;
+        background-color: #bbdefb;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+    }
+    .binary-var-item:hover {
+        background-color: #90caf9;
+    }
+    /* File upload styling */
+    .file-upload-container {
+        margin: 1.5rem 0;
+    }
+    .file-upload-label {
+        display: block;
+        border: 2px dashed #ccc;
+        border-radius: 5px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .file-upload-label:hover {
+        border-color: #2196F3;
+    }
+    .file-input {
+        display: none;
+    }
+    .file-upload-icon {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .file-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+    .upload-text {
+        font-size: 1.1rem;
+        color: #666;
+    }
+    .file-preview {
+        margin-top: 1rem;
+        padding: 1rem;
+        border: 1px solid #eee;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+        display: none;
+    }
+    .file-preview.active {
+        display: block;
+    }
+    /* Feature selection styling */
+    .feature-selection-controls {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+    }
+    .search-container {
+        width: 100%;
+    }
+    .search-input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
     }
     .feature-selection-container {
         display: flex;
@@ -137,6 +338,17 @@
         font-size: 1rem;
         border-bottom: 1px solid #ddd;
     }
+    .selection-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+        border-bottom: 1px solid #eee;
+    }
+    .feature-count {
+        font-size: 0.8rem;
+        color: #666;
+    }
     .feature-list {
         height: 300px;
         overflow-y: auto;
@@ -145,11 +357,18 @@
     .feature-item {
         padding: 0.25rem 0;
     }
+    .feature-item.filtered {
+        display: none;
+    }
+    .feature-item:hover {
+        background-color: #f5f5f5;
+    }
     .transfer-buttons {
         display: flex;
         flex-direction: column;
         justify-content: center;
         gap: 1rem;
+        padding: 0 1rem;
     }
     .transfer-button {
         padding: 0.5rem;
@@ -158,24 +377,201 @@
         border-radius: 4px;
         font-size: 1.2rem;
         cursor: pointer;
+        width: 40px;
+        text-align: center;
+    }
+    .transfer-button:hover {
+        background-color: #e0e0e0;
+    }
+    .transfer-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
     .select-all-container {
-        display: block;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #eee;
-        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
         font-weight: bold;
+    }
+    .button-group {
+        margin-top: 1.5rem;
+        display: flex;
+        gap: 1rem;
+    }
+    .button-primary {
+        background-color: #2196F3;
+        color: white;
+        border: none;
+    }
+    .button-secondary {
+        background-color: #f5f5f5;
+        color: #333;
+        border: 1px solid #ddd;
+    }
+    .validation-message {
+        margin-top: 1rem;
+        color: #d32f2f;
+        font-size: 0.9rem;
+    }
+    .input-help {
+        font-size: 0.8rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+    .form-group {
+        margin-bottom: 1.5rem;
     }
 {% endblock %}
 
 {% block scripts %}
+    {% if not step %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('dataset_file');
+            const filePreview = document.getElementById('file-preview');
+            const uploadButton = document.getElementById('uploadButton');
+            const uploadForm = document.getElementById('dataUploadForm');
+            const maxFileSize = 10 * 1024 * 1024; // 10MB
+            
+            // Handle file selection
+            fileInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    
+                    // Check file size
+                    if (file.size > maxFileSize) {
+                        filePreview.innerHTML = `<div style="color: red;">File is too large (max 10MB)</div>`;
+                        filePreview.classList.add('active');
+                        uploadButton.disabled = true;
+                        return;
+                    }
+                    
+                    // Check file type
+                    const fileExtension = file.name.split('.').pop().toLowerCase();
+                    if (!['csv', 'xlsx', 'xls'].includes(fileExtension)) {
+                        filePreview.innerHTML = `<div style="color: red;">Invalid file type (only .csv, .xlsx, .xls allowed)</div>`;
+                        filePreview.classList.add('active');
+                        uploadButton.disabled = true;
+                        return;
+                    }
+                    
+                    // Show file details
+                    const fileSize = (file.size / 1024).toFixed(2) + ' KB';
+                    filePreview.innerHTML = `
+                        <div>
+                            <strong>File:</strong> ${file.name}<br>
+                            <strong>Type:</strong> ${file.type || fileExtension.toUpperCase()}<br>
+                            <strong>Size:</strong> ${fileSize}
+                        </div>
+                    `;
+                    filePreview.classList.add('active');
+                    uploadButton.disabled = false;
+                } else {
+                    filePreview.classList.remove('active');
+                    uploadButton.disabled = true;
+                }
+            });
+            
+            // Handle drag and drop
+            const dropArea = document.querySelector('.file-upload-label');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropArea.style.borderColor = '#2196F3';
+                dropArea.style.backgroundColor = '#e3f2fd';
+            }
+            
+            function unhighlight() {
+                dropArea.style.borderColor = '#ccc';
+                dropArea.style.backgroundColor = '';
+            }
+            
+            dropArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                
+                if (files && files.length > 0) {
+                    fileInput.files = files;
+                    // Trigger change event
+                    const event = new Event('change');
+                    fileInput.dispatchEvent(event);
+                }
+            }
+        });
+    </script>
+    {% endif %}
+    
+    {% if step == 'target_selection' %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const targetSelect = document.getElementById('target_variable');
+            const binaryItems = document.querySelectorAll('.binary-var-item');
+            
+            // Make binary variable chips clickable
+            binaryItems.forEach(function(item) {
+                item.addEventListener('click', function() {
+                    const value = this.dataset.value;
+                    targetSelect.value = value;
+                    
+                    // Highlight the selected item
+                    binaryItems.forEach(i => i.classList.remove('selected'));
+                    this.classList.add('selected');
+                });
+            });
+        });
+    </script>
+    <style>
+        .binary-var-item.selected {
+            background-color: #64b5f6;
+            font-weight: bold;
+        }
+    </style>
+    {% endif %}
+    
     {% if step == 'feature_selection' %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Feature selection elements
+            const availableList = document.getElementById('available-features-list');
+            const selectedList = document.getElementById('selected-features-list');
+            const searchInput = document.getElementById('feature-search');
+            const validationMessage = document.getElementById('validation-message');
+            const completeButton = document.getElementById('complete-button');
+            const availableCountEl = document.getElementById('available-count');
+            const selectedCountEl = document.getElementById('selected-count');
+            
+            // Feature data from server
+            let featureData = [];
+            {% for choice in feature_form.selected_features.field.choices %}
+            featureData.push({
+                value: "{{ choice.0 }}",
+                label: "{{ choice.1 }}"
+            });
+            {% endfor %}
+            
             // Helper to create a feature checkbox item
             function createFeatureItem(value, label) {
                 const div = document.createElement('div');
                 div.className = 'feature-item';
+                div.dataset.featureName = label;
                 
                 const labelEl = document.createElement('label');
                 
@@ -184,45 +580,104 @@
                 checkbox.className = 'selected-feature-checkbox';
                 checkbox.value = value;
                 
+                const span = document.createElement('span');
+                span.className = 'feature-label';
+                span.textContent = label;
+                
                 labelEl.appendChild(checkbox);
-                labelEl.appendChild(document.createTextNode(' ' + label));
+                labelEl.appendChild(span);
                 
                 div.appendChild(labelEl);
                 return div;
             }
             
-            // Add hidden inputs for selected features
+            // Update hidden inputs for selected features
             function updateSelectedFeatures() {
                 const container = document.getElementById('selected-features-container');
                 container.innerHTML = ''; // Clear existing
                 
                 // Get all selected features
-                const selectedList = document.getElementById('selected-features-list');
-                const checkboxes = selectedList.querySelectorAll('.selected-feature-checkbox');
+                const items = selectedList.querySelectorAll('.feature-item');
                 
-                checkboxes.forEach(function(checkbox) {
+                items.forEach(function(item) {
+                    const value = item.querySelector('input').value;
                     const input = document.createElement('input');
                     input.type = 'hidden';
                     input.name = 'selected_features';
-                    input.value = checkbox.value;
+                    input.value = value;
                     container.appendChild(input);
                 });
+                
+                // Update counts correctly 
+                const availableItems = availableList.querySelectorAll('.feature-item');
+                let visibleAvailableCount = 0;
+                
+                availableItems.forEach(function(item) {
+                    if (item.style.display !== 'none' && !item.classList.contains('filtered')) {
+                        visibleAvailableCount++;
+                    }
+                });
+                
+                const selectedCount = selectedList.querySelectorAll('.feature-item').length;
+                availableCountEl.textContent = `${visibleAvailableCount} feature${visibleAvailableCount !== 1 ? 's' : ''}`;
+                selectedCountEl.textContent = `${selectedCount} feature${selectedCount !== 1 ? 's' : ''}`;
+                
+                // Validate selection
+                validateSelection();
             }
+            
+            // Validate that we have selected at least some features
+            function validateSelection() {
+                const items = selectedList.querySelectorAll('.feature-item');
+                
+                if (items.length === 0) {
+                    validationMessage.textContent = 'Please select at least one feature';
+                    completeButton.disabled = true;
+                } else {
+                    validationMessage.textContent = '';
+                    completeButton.disabled = false;
+                }
+            }
+            
+            // Filter available features based on search
+            function filterFeatures() {
+                const query = searchInput.value.toLowerCase();
+                const items = availableList.querySelectorAll('.feature-item');
+                
+                items.forEach(function(item) {
+                    const name = item.dataset.featureName.toLowerCase();
+                    if (name.includes(query)) {
+                        item.classList.remove('filtered');
+                    } else {
+                        item.classList.add('filtered');
+                    }
+                });
+                
+                updateSelectedFeatures();
+            }
+            
+            // Search functionality
+            searchInput.addEventListener('input', filterFeatures);
             
             // Move features between lists
             document.getElementById('move-to-selected').addEventListener('click', function() {
                 const availableCheckboxes = document.querySelectorAll('.available-feature-checkbox:checked');
-                const selectedList = document.getElementById('selected-features-list');
+                
+                if (availableCheckboxes.length === 0) {
+                    alert('Please select at least one feature to move');
+                    return;
+                }
                 
                 availableCheckboxes.forEach(function(checkbox) {
-                    const value = checkbox.value;
-                    const label = checkbox.closest('label').textContent.trim();
                     const item = checkbox.closest('.feature-item');
+                    const value = checkbox.value;
+                    const label = item.dataset.featureName;
                     
                     // Create new item in selected list
                     selectedList.appendChild(createFeatureItem(value, label));
                     
-                    // Remove checkbox selection before removing
+                    // Hide the item in available list
+                    item.style.display = 'none';
                     checkbox.checked = false;
                 });
                 
@@ -232,8 +687,63 @@
             document.getElementById('move-to-available').addEventListener('click', function() {
                 const selectedCheckboxes = document.querySelectorAll('.selected-feature-checkbox:checked');
                 
+                if (selectedCheckboxes.length === 0) {
+                    alert('Please select at least one feature to remove');
+                    return;
+                }
+                
                 selectedCheckboxes.forEach(function(checkbox) {
                     const item = checkbox.closest('.feature-item');
+                    const value = checkbox.value;
+                    const label = item.dataset.featureName;
+                    
+                    // Show the item in available list
+                    const availableItem = availableList.querySelector(`.feature-item[data-feature-name="${label}"]`);
+                    if (availableItem) {
+                        availableItem.style.display = '';
+                    }
+                    
+                    // Remove from selected list
+                    item.remove();
+                });
+                
+                updateSelectedFeatures();
+            });
+            
+            // Move all features
+            document.getElementById('move-all-to-selected').addEventListener('click', function() {
+                const availableItems = availableList.querySelectorAll('.feature-item:not(.filtered)');
+                
+                availableItems.forEach(function(item) {
+                    const checkbox = item.querySelector('input');
+                    const value = checkbox.value;
+                    const label = item.dataset.featureName;
+                    
+                    // Create new item in selected list
+                    selectedList.appendChild(createFeatureItem(value, label));
+                    
+                    // Hide the item in available list
+                    item.style.display = 'none';
+                });
+                
+                updateSelectedFeatures();
+            });
+            
+            document.getElementById('move-all-to-available').addEventListener('click', function() {
+                const selectedItems = selectedList.querySelectorAll('.feature-item');
+                
+                selectedItems.forEach(function(item) {
+                    const checkbox = item.querySelector('input');
+                    const value = checkbox.value;
+                    const label = item.dataset.featureName;
+                    
+                    // Show the item in available list
+                    const availableItem = availableList.querySelector(`.feature-item[data-feature-name="${label}"]`);
+                    if (availableItem) {
+                        availableItem.style.display = '';
+                    }
+                    
+                    // Remove from selected list
                     item.remove();
                 });
                 
@@ -242,21 +752,24 @@
             
             // Select all checkboxes
             document.getElementById('select-all-available').addEventListener('change', function() {
-                const checkboxes = document.querySelectorAll('.available-feature-checkbox');
+                const checkboxes = availableList.querySelectorAll('.feature-item:not(.filtered) input[type="checkbox"]');
                 checkboxes.forEach(function(checkbox) {
                     checkbox.checked = this.checked;
                 }, this);
             });
             
             document.getElementById('select-all-selected').addEventListener('change', function() {
-                const checkboxes = document.querySelectorAll('.selected-feature-checkbox');
+                const checkboxes = selectedList.querySelectorAll('input[type="checkbox"]');
                 checkboxes.forEach(function(checkbox) {
                     checkbox.checked = this.checked;
                 }, this);
             });
             
-            // Initialize the form
+            // Initialize the feature counts
             updateSelectedFeatures();
+            
+            // Auto-select all available features initially
+            document.getElementById('move-all-to-selected').click();
         });
     </script>
     {% endif %}

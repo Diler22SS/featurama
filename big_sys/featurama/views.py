@@ -37,6 +37,48 @@ def upload_data(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     pipeline = get_object_or_404(Pipeline, pk=pipeline_id)
     
     if request.method == 'POST':
+        # Check if user clicked a back button
+        if 'go_back' in request.POST:
+            if request.POST['go_back'] == 'upload':
+                # Go back to file upload step
+                return render(
+                    request, 
+                    'featurama/upload_data.html', 
+                    {'pipeline': pipeline}
+                )
+            elif request.POST['go_back'] == 'target':
+                # Go back to target selection step
+                if 'temp_file_path' not in request.session:
+                    # If session expired, go back to upload
+                    return render(
+                        request, 
+                        'featurama/upload_data.html', 
+                        {'pipeline': pipeline}
+                    )
+                
+                # Get data from session
+                features = request.session.get('dataset_features', [])
+                binary_vars = request.session.get('binary_variables', [])
+                temp_file_name = request.session.get('temp_file_name', '')
+                dataset_name = os.path.splitext(temp_file_name)[0]
+                
+                # Create form for target variable selection
+                target_form = TargetVariableForm(features=features)
+                
+                return render(
+                    request, 
+                    'featurama/upload_data.html', 
+                    {
+                        'pipeline': pipeline,
+                        'features': features,
+                        'binary_variables': binary_vars,
+                        'dataset_name': dataset_name,
+                        'target_form': target_form,
+                        'step': 'target_selection'
+                    }
+                )
+        
+        # Normal flow
         if 'dataset_file' in request.FILES:
             return _handle_file_upload(request, pipeline)
         elif 'target_variable' in request.POST:
@@ -79,8 +121,19 @@ def _handle_file_upload(
         features = df.columns.tolist()
         dataset_name = os.path.splitext(dataset_file.name)[0]
         
-        # Store features in session for later use
+        # Identify binary variables (columns with only 2 unique values)
+        binary_vars = []
+        for col in features:
+            try:
+                if df[col].nunique() == 2:
+                    binary_vars.append(col)
+            except Exception:
+                # Skip columns that can't be analyzed (e.g., complex objects)
+                pass
+        
+        # Store features and binary vars in session for later use
         request.session['dataset_features'] = features
+        request.session['binary_variables'] = binary_vars
         
         # Create form for target variable selection
         target_form = TargetVariableForm(features=features)
@@ -91,6 +144,7 @@ def _handle_file_upload(
             {
                 'pipeline': pipeline,
                 'features': features,
+                'binary_variables': binary_vars,
                 'dataset_name': dataset_name,
                 'target_form': target_form,
                 'step': 'target_selection'

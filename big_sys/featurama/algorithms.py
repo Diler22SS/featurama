@@ -76,6 +76,11 @@ def _get_wrapped_features(pipeline: Pipeline) -> List[str]:
     result = FeatureSelectionResult.objects.filter(pipeline=pipeline).first()
     return result.wrapped_features if result else []
 
+def _get_manual_features(pipeline: Pipeline) -> List[str]:
+    """Get manual features from previous step if available."""
+    result = FeatureSelectionResult.objects.filter(pipeline=pipeline).first()
+    return result.manual_features if result else []
+
 def _scale_features(X: pd.DataFrame) -> pd.DataFrame:
     """Scale features using StandardScaler."""
     scaler = StandardScaler()
@@ -455,12 +460,12 @@ def model_logistic_regression(
     if not pipeline.dataset or not pipeline.dataset.user_selected_features:
         return _create_empty_metrics(pipeline)
 
-    wrapped_features = _get_wrapped_features(pipeline)
-    print(f"Model selected features IN logreg: {len(wrapped_features)} \n {wrapped_features}")
-    X_wrapped = X[wrapped_features]
+    manual_features = _get_manual_features(pipeline)
+    print(f"Model selected features IN logreg: {len(manual_features)} \n {manual_features}")
+    X_manual = X[manual_features]
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X_wrapped,
+        X_manual,
         y,
         test_size=DEFAULT_TEST_SIZE,
         random_state=DEFAULT_RANDOM_STATE
@@ -516,12 +521,12 @@ def model_xgb_linear(
     if not pipeline.dataset or not pipeline.dataset.user_selected_features:
         return _create_empty_metrics(pipeline)
 
-    wrapped_features = _get_wrapped_features(pipeline)
-    print(f"Model selected features IN xgb linear: {len(wrapped_features)} \n {wrapped_features}")
-    X_wrapped = X[wrapped_features]
+    manual_features = _get_manual_features(pipeline)
+    print(f"Model selected features IN xgb linear: {len(manual_features)} \n {manual_features}")
+    X_manual = X[manual_features]
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X_wrapped,
+        X_manual,
         y,
         test_size=DEFAULT_TEST_SIZE,
         random_state=DEFAULT_RANDOM_STATE
@@ -575,12 +580,12 @@ def model_decision_tree(
     if not pipeline.dataset or not pipeline.dataset.user_selected_features:
         return _create_empty_metrics(pipeline)
 
-    wrapped_features = _get_wrapped_features(pipeline)
-    print(f"Model selected features IN dtree: {len(wrapped_features)} \n {wrapped_features}")
-    X_wrapped = X[wrapped_features]
+    manual_features = _get_manual_features(pipeline)
+    print(f"Model selected features IN dtree: {len(manual_features)} \n {manual_features}")
+    X_manual = X[manual_features]
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X_wrapped,
+        X_manual,
         y,
         test_size=DEFAULT_TEST_SIZE,
         random_state=DEFAULT_RANDOM_STATE
@@ -635,12 +640,12 @@ def model_xgb_tree(
     if not pipeline.dataset or not pipeline.dataset.user_selected_features:
         return _create_empty_metrics(pipeline)
 
-    wrapped_features = _get_wrapped_features(pipeline)
-    print(f"Model selected features IN xgb tree: {len(wrapped_features)} \n {wrapped_features}")
-    X_wrapped = X[wrapped_features]
+    manual_features = _get_manual_features(pipeline)
+    print(f"Model selected features IN xgb tree: {len(manual_features)} \n {manual_features}")
+    X_manual = X[manual_features]
 
     X_train, X_test, y_train, y_test = train_test_split(
-        X_wrapped,
+        X_manual,
         y,
         test_size=DEFAULT_TEST_SIZE,
         random_state=DEFAULT_RANDOM_STATE
@@ -703,7 +708,7 @@ MODEL_METHODS = {
     'xgb_tree': model_xgb_tree,
 }
 
-def run_pipeline(pipeline: Pipeline) -> None:
+def run_pipeline(pipeline: Pipeline, run_model: bool = True) -> None:
     """Run all pipeline analysis steps.
     
     This function runs feature selection, model evaluation, and SHAP analysis
@@ -712,48 +717,50 @@ def run_pipeline(pipeline: Pipeline) -> None:
     
     Args:
         pipeline: The pipeline to analyze
+        run_model: Whether to run the model training step (default: True)
     """
     # Get the dataset
     df = pipeline.dataset.get_dataframe()
     target_var = pipeline.dataset.target_variable
-    
+        
     # Split into features and target
     X = df.drop(columns=[target_var])
     y = df[target_var]
-
+    
     config = {
         'filter_method': pipeline.filter_method,
         'wrapper_method': pipeline.wrapper_method,
         'model_method': pipeline.model_method,
     }
     print(f"Running pipeline with config: {config}", end="\n\n")
-
+    
     # Validate configuration
-    required_keys = ['model_method']
+    required_keys = ['model_method'] if run_model else []
     for key in required_keys:
         if key not in config:
             raise ValueError(f"Missing required configuration key: {key}")
-
+            
     if config.get('filter_method') and config['filter_method'] not in FILTER_METHODS:
         raise ValueError(f"Invalid filter_method: {config['filter_method']}")
     if config.get('wrapper_method') and config['wrapper_method'] not in WRAPPER_METHODS:
         raise ValueError(f"Invalid wrapper_method: {config['wrapper_method']}")
-    if config['model_method'] not in MODEL_METHODS:
+    if run_model and config['model_method'] not in MODEL_METHODS:
         raise ValueError(f"Invalid model_method: {config['model_method']}")
 
     # Step 1: Filter Method (Optional)
-    if config.get('filter_method'):
+    if not run_model and config.get('filter_method'):
         filter_func = FILTER_METHODS[config['filter_method']]
         filter_params = config.get('filter_params', {})
         filter_func(pipeline, X.copy(), y.copy(), **filter_params)
 
     # Step 2: Wrapper Method (Optional)
-    if config.get('wrapper_method'):
+    if not run_model and config.get('wrapper_method'):
         wrapper_func = WRAPPER_METHODS[config['wrapper_method']]
         wrapper_params = config.get('wrapper_params', {})
         wrapper_func(pipeline, X.copy(), y.copy(), **wrapper_params)
 
-    # Step 3: Model Training and SHAP Analysis
-    model_func = MODEL_METHODS[config['model_method']]
-    model_params = config.get('model_params', {})
-    model_func(pipeline, X.copy(), y.copy(), **model_params)
+    # Step 3: Model Training and SHAP Analysis (Optional)
+    if run_model:
+        model_func = MODEL_METHODS[config['model_method']]
+        model_params = config.get('model_params', {})
+        model_func(pipeline, X.copy(), y.copy(), **model_params)

@@ -12,6 +12,8 @@ urlpatterns = [
          views.upload_data, name='upload_data'),
     path('featurama/pipelines/<int:pipeline_id>/configure',
          views.configure_pipeline, name='configure_pipeline'),
+    path('featurama/pipelines/<int:pipeline_id>/manual_feature_selection',
+         views.manual_feature_selection, name='manual_feature_selection'),
     path('featurama/pipelines/<int:pipeline_id>/results',
          views.results_summary, name='results_summary'),
     path('featurama/pipelines/<int:pipeline_id>/delete',

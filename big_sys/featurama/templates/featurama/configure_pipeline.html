@@ -50,9 +50,63 @@
         gap: 1rem;
         margin-top: 1rem;
     }
+    .phase-overview {
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .phase-step {
+        flex: 1;
+        text-align: center;
+        padding: 1rem;
+        border: 1px solid #eee;
+        border-radius: 4px;
+        margin: 0 0.5rem;
+        position: relative;
+    }
+    .phase-step.active {
+        background-color: #e3f2fd;
+        border-color: #2196F3;
+        font-weight: bold;
+    }
+    .phase-step.completed {
+        background-color: #e8f5e9;
+        border-color: #4caf50;
+    }
+    .phase-step:after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -15px;
+        width: 0;
+        height: 0;
+        border-top: 8px solid transparent;
+        border-left: 8px solid #ccc;
+        border-bottom: 8px solid transparent;
+        transform: translateY(-50%);
+    }
+    .phase-step:last-child:after {
+        display: none;
+    }
 {% endblock %}
 
 {% block content %}
+    <div class="phase-overview">
+        <div class="phase-step completed">
+            Data Upload
+        </div>
+        <div class="phase-step active">
+            Configure Methods
+        </div>
+        <div class="phase-step">
+            Manual Feature Selection
+        </div>
+        <div class="phase-step">
+            View Results
+        </div>
+    </div>
+
     <form method="post">
         {% csrf_token %}
         
@@ -102,7 +156,7 @@
         </div>
 
         <div class="button-row">
-            <button type="submit" class="button button-primary">Save Configuration</button>
+            <button type="submit" class="button button-primary">Continue to Feature Selection</button>
             
             {% if has_results %}
             <a href="{% url 'featurama:results_summary' pipeline.id %}" class="button">

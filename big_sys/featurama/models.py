@@ -137,6 +137,8 @@ class FeatureSelectionResult(models.Model):
             algorithm after the filter method
         wrapped_features: JSON field storing features selected by the 
             algorithm after the wrapper method
+        manual_features: JSON field storing features selected by the 
+            user manually
         created_at: When the result was created
     """
     
@@ -147,6 +149,7 @@ class FeatureSelectionResult(models.Model):
     )
     filtered_features = models.JSONField(null=True, blank=True)
     wrapped_features = models.JSONField(null=True, blank=True)
+    manual_features = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

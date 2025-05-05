@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpRequest, HttpResponse
 from django.db import models
 
-from .models import Pipeline
+from .models import Pipeline, FeatureSelectionResult
 from .utils import (
     read_dataset_file, validate_dataset
 )
@@ -339,11 +339,11 @@ def configure_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
         if form.is_valid():
             form.save()
             
-            # Run the complete pipeline analysis after saving the configuration
-            run_pipeline(pipeline)
+            # Run filter and wrapper methods only
+            run_pipeline(pipeline, run_model=False)
             
             return redirect(
-                'featurama:results_summary', 
+                'featurama:manual_feature_selection', 
                 pipeline_id=pipeline.pk
             )
         
@@ -366,6 +366,70 @@ def configure_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     }
     
     return render(request, 'featurama/configure_pipeline.html', context)
+
+
+def manual_feature_selection(request: HttpRequest, pipeline_id: int) -> HttpResponse:
+    """Allow user to manually select features after filter and wrapper methods."""
+    pipeline = get_object_or_404(Pipeline, pk=pipeline_id)
+    
+    # Get the latest feature selection result
+    result = FeatureSelectionResult.objects.filter(pipeline=pipeline).first()
+    
+    if not result:
+        # If we have no results, redirect to the configuration page
+        return redirect('featurama:configure_pipeline', pipeline_id=pipeline.pk)
+    
+    # Get original user selected features
+    user_features = pipeline.dataset.user_selected_features or []
+    
+    # Get filtered and wrapped features from the most recent result
+    filtered_features = result.filtered_features or []
+    wrapped_features = result.wrapped_features or []
+    
+    # For the initial display, use wrapped features if available, otherwise use filtered
+    selected_features = wrapped_features if wrapped_features else filtered_features
+    
+    if request.method == 'POST':
+        # Process manual feature selection
+        manually_selected = request.POST.getlist('selected_features')
+        print(f"Manually selected features: {len(manually_selected)} \n {manually_selected}")
+        
+        if not manually_selected:
+            # Require at least one feature
+            return render(
+                request, 
+                'featurama/manual_feature_selection.html',
+                {
+                    'pipeline': pipeline,
+                    'user_features': user_features,
+                    'filtered_features': filtered_features,
+                    'wrapped_features': wrapped_features,
+                    'selected_features': selected_features,
+                    'error': 'Please select at least one feature'
+                }
+            )
+        
+        # Save manually selected features
+        result.manual_features = manually_selected
+        result.save()
+        
+        # Now run the model step
+        run_pipeline(pipeline)
+        
+        return redirect('featurama:results_summary', pipeline_id=pipeline.pk)
+    
+    # GET request - show the form
+    return render(
+        request, 
+        'featurama/manual_feature_selection.html',
+        {
+            'pipeline': pipeline,
+            'user_features': user_features,
+            'filtered_features': filtered_features,
+            'wrapped_features': wrapped_features,
+            'selected_features': selected_features
+        }
+    )
 
 
 def results_summary(request: HttpRequest, pipeline_id: int) -> HttpResponse:

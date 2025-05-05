@@ -1,0 +1,237 @@
+{% extends "featurama/base.html" %}
+
+{% block title %}Manual Feature Selection - Pipeline {{ pipeline.id }}{% endblock %}
+
+{% block header %}Manual Feature Selection - Pipeline #{{ pipeline.id }}{% endblock %}
+
+{% block additional_styles %}
+    .feature-selection-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-top: 1rem;
+    }
+    
+    .features-section {
+        padding: 1rem;
+        border: 1px solid #eee;
+        border-radius: 4px;
+    }
+    
+    .feature-list {
+        list-style-type: none;
+        padding: 0;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .feature-item {
+        padding: 0.5rem;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .feature-item.selected {
+        background-color: #f0f7ff;
+    }
+    
+    .feature-count {
+        font-size: 0.9em;
+        color: #666;
+    }
+    
+    .search-container {
+        margin-bottom: 1rem;
+    }
+    
+    .search-input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .highlighted {
+        background-color: #fff3cd;
+    }
+    
+    .button-group {
+        margin-top: 2rem;
+    }
+    
+    .validation-message {
+        color: #d32f2f;
+        margin-top: 1rem;
+    }
+    
+    .phase-overview {
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .phase-step {
+        flex: 1;
+        text-align: center;
+        padding: 1rem;
+        border: 1px solid #eee;
+        border-radius: 4px;
+        margin: 0 0.5rem;
+        position: relative;
+    }
+    
+    .phase-step.active {
+        background-color: #e3f2fd;
+        border-color: #2196F3;
+        font-weight: bold;
+    }
+    
+    .phase-step.completed {
+        background-color: #e8f5e9;
+        border-color: #4caf50;
+    }
+    
+    .phase-step:after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -15px;
+        width: 0;
+        height: 0;
+        border-top: 8px solid transparent;
+        border-left: 8px solid #ccc;
+        border-bottom: 8px solid transparent;
+        transform: translateY(-50%);
+    }
+    
+    .phase-step:last-child:after {
+        display: none;
+    }
+{% endblock %}
+
+{% block content %}
+    <div class="phase-overview">
+        <div class="phase-step completed">
+            Data Upload
+        </div>
+        <div class="phase-step completed">
+            Configure Methods
+        </div>
+        <div class="phase-step active">
+            Manual Feature Selection
+        </div>
+        <div class="phase-step">
+            View Results
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Manual Feature Selection</h2>
+        
+        <p class="description">
+            Review and adjust the features selected by the filter and wrapper methods.
+            Select which features you want to include in the final model training step.
+        </p>
+        
+        {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="feature-selection-container">
+                <div class="features-section">
+                    <h3>Selection Process</h3>
+                    <p>Number of features at each step:</p>
+                    <p><strong>User Selected:</strong> {{ user_features|length }}</p>
+                    <p><strong>Filter Method ({{ pipeline.filter_method }}):</strong> {{ filtered_features|length }}</p>
+                    <p><strong>Wrapper Method ({{ pipeline.wrapper_method }}):</strong> {{ wrapped_features|length }}</p>
+                    
+                    <div class="search-container">
+                        <input type="text" id="feature-search" placeholder="Search features..." class="search-input">
+                    </div>
+                </div>
+                
+                <div class="features-section">
+                    <h3>Features for Model Training</h3>
+                    <p class="feature-count"><span id="selected-count">{{ selected_features|length }}</span> features selected</p>
+                    
+                    <ul class="feature-list" id="feature-list">
+                        {% for feature in user_features %}
+                            <li class="feature-item">
+                                <label>
+                                    <input type="checkbox" 
+                                           name="selected_features" 
+                                           value="{{ feature }}" 
+                                           {% if feature in selected_features %}checked{% endif %}
+                                           class="feature-checkbox">
+                                    <span class="feature-label">{{ feature }}</span>
+                                    
+                                    {% if feature in filtered_features and feature in wrapped_features %}
+                                        <small class="badge badge-success">Both methods</small>
+                                    {% elif feature in filtered_features %}
+                                        <small class="badge badge-info">Filter only</small>
+                                    {% elif feature in wrapped_features %}
+                                        <small class="badge badge-warning">Wrapper only</small>
+                                    {% endif %}
+                                </label>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button type="submit" class="button button-primary">Train Model</button>
+                <a href="{% url 'featurama:configure_pipeline' pipeline.id %}" class="button button-secondary">
+                    Back to Configuration
+                </a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const featureSearch = document.getElementById('feature-search');
+        const featureItems = document.querySelectorAll('.feature-item');
+        const featureCheckboxes = document.querySelectorAll('.feature-checkbox');
+        const selectedCount = document.getElementById('selected-count');
+        
+        // Update the selected count
+        function updateSelectedCount() {
+            const checked = document.querySelectorAll('.feature-checkbox:checked');
+            selectedCount.textContent = checked.length;
+        }
+        
+        // Initialize
+        updateSelectedCount();
+        
+        // Search functionality
+        featureSearch.addEventListener('input', function() {
+            const searchText = this.value.toLowerCase();
+            
+            featureItems.forEach(item => {
+                const label = item.querySelector('.feature-label').textContent.toLowerCase();
+                
+                if (searchText === '') {
+                    item.style.display = '';
+                    item.classList.remove('highlighted');
+                } else if (label.includes(searchText)) {
+                    item.style.display = '';
+                    item.classList.add('highlighted');
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+        
+        // Update count when checkboxes change
+        featureCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelectedCount);
+        });
+    });
+</script>
+{% endblock %} 

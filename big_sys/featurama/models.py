@@ -8,6 +8,7 @@ from django.db import models
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 import os
+import pandas as pd
 
 
 # Create your models here.
@@ -19,14 +20,14 @@ class Dataset(models.Model):
     
     Attributes:
         name: Human-readable name for the dataset
-        file: File field for the actual dataset file
+        data: JSON field storing the actual dataset data
         uploaded_at: When the dataset was uploaded
         target_variable: Name of the target variable/column
         user_selected_features: JSON field storing features selected by users
     """
     
     name = models.CharField(max_length=255, null=True, blank=True)
-    file = models.FileField(upload_to='datasets/', null=True, blank=True)
+    data = models.JSONField(null=True, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     target_variable = models.CharField(max_length=255, null=True, blank=True)
     user_selected_features = models.JSONField(null=True, blank=True)
@@ -35,30 +36,33 @@ class Dataset(models.Model):
         """Return a string representation of the dataset."""
         return str(self.name or f"Dataset #{self.pk}")
 
+    def get_dataframe(self) -> pd.DataFrame:
+        """Return the data as a pandas DataFrame."""
+        if not self.data:
+            return pd.DataFrame()
+        return pd.read_json(self.data)
+    
+    def save_dataframe(self, df: pd.DataFrame) -> None:
+        """Save a pandas DataFrame as JSON."""
+        self.data = df.to_json(orient='records')
+        self.save()
+    
     def get_filename(self) -> str:
         """Return just the filename without path."""
-        if not self.file:
+        if not self.data:
             return "No file"
-        return os.path.basename(self.file.name)
+        return self.name
     
     def get_file_extension(self) -> str:
         """Return the file extension."""
-        if not self.file:
-            return ""
-        _, ext = os.path.splitext(self.file.name)
-        return ext.lower()
+        return ""
     
     def is_csv(self) -> bool:
         """Check if the file is a CSV."""
-        return self.get_file_extension() == '.csv'
+        return False
     
     def delete(self, *args, **kwargs):
         """Override delete to remove the associated file."""
-        # Delete the file from storage
-        if self.file:
-            if os.path.isfile(self.file.path):
-                os.remove(self.file.path)
-        
         # Call the "real" delete() method
         super().delete(*args, **kwargs)
 
@@ -248,9 +252,10 @@ class ShapExplanation(models.Model):
 @receiver(pre_delete, sender=Dataset)
 def delete_dataset_files(sender, instance, **kwargs):
     """Delete files when a Dataset is deleted."""
-    if instance.file:
-        if os.path.isfile(instance.file.path):
-            os.remove(instance.file.path)
+    if instance.data:
+        # Delete the associated file
+        if os.path.isfile(instance.data):
+            os.remove(instance.data)
 
 
 @receiver(pre_delete, sender=ShapExplanation)

@@ -5,9 +5,11 @@ separating it from the view functions and keeping controllers thin.
 """
 
 from typing import Dict, List, Optional, Any
+from django.db import models
+
 from .models import (
-    Pipeline, Dataset, FeatureSelectionResult, 
-    PerformanceMetric, ShapExplanation
+    Dataset, FeatureSelectionResult, 
+    PerformanceMetric, Pipeline, ShapExplanation
 )
 
 
@@ -23,19 +25,23 @@ class MethodsService:
         """
         filter_methods = {
             'variance_threshold': 'Variance Threshold – removes low-variance features',
-            'correlation': 'Correlation – removes highly correlated features',
-            'mutual_info': 'Mutual Information – selects features based on mutual info'
+            'anova': 'ANOVA – selects features based on F-value',
+            'mutual_info': 'Mutual Information – selects features based on mutual info',
+            'mrmr': 'MRMR – Minimum Redundancy Maximum Relevance'
         }
         
         wrapper_methods = {
-            'recursive_feature_elimination': 'Recursive Feature Elimination',
-            'sequential_feature_selection': 'Sequential Feature Selection'
+            'rfe_logreg': 'Recursive Feature Elimination with Logistic Regression',
+            'rfe_tree': 'Recursive Feature Elimination with Decision Tree',
+            'sfs_logreg': 'Sequential Feature Selection with Logistic Regression',
+            'sfs_tree': 'Sequential Feature Selection with Decision Tree'
         }
         
         model_methods = {
-            'random_forest': 'Random Forest – ensemble using multiple decision trees',
-            'xgboost': 'XGBoost – gradient boosting framework',
-            'logistic_regression': 'Logistic Regression – linear model for classification'
+            'logreg': 'Logistic Regression – linear model for classification',
+            'xgb_linear': 'XGBoost – gradient boosting framework with linear booster',
+            'dtree': 'Decision Tree – simple decision tree model',
+            'xgb_tree': 'XGBoost – gradient boosting framework with tree booster'
         }
         
         return {

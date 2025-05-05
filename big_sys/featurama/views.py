@@ -2,17 +2,18 @@
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpRequest, HttpResponse
+from django.db import models
+
 from .models import Pipeline
-from django.core.files.base import ContentFile
 from .utils import (
-    read_dataset_file, clean_up_temp_file, validate_dataset
+    read_dataset_file, validate_dataset
 )
 from .services import MethodsService, PipelineResultsService, DatasetService
 from .forms import (
     DatasetUploadForm, TargetVariableForm, 
     PipelineConfigForm, FeatureSelectionForm
 )
-from .algorithms import run_pipeline_analysis
+from .algorithms import run_pipeline
 import os
 import pandas as pd
 
@@ -113,9 +114,9 @@ def _handle_file_upload(
         dataset_file = form.cleaned_data['dataset_file']
         df, temp_file_path = read_dataset_file(dataset_file)
         
-        # Store temp file info in session
-        request.session['temp_file_path'] = temp_file_path
-        request.session['temp_file_name'] = dataset_file.name
+        # Store data in session
+        request.session['dataset_data'] = df.to_json(orient='records')
+        request.session['dataset_name'] = dataset_file.name
 
         # Get column names for target variable selection
         features = df.columns.tolist()
@@ -220,12 +221,12 @@ def _handle_feature_selection(
     """Process feature selection and create dataset."""
     
     # Get data from session
-    temp_file_path = request.session.get('temp_file_path')
-    temp_file_name = request.session.get('temp_file_name')
+    dataset_data = request.session.get('dataset_data')
+    dataset_name = request.session.get('dataset_name')
     target_variable = request.session.get('target_variable')
     features = request.session.get('dataset_features', [])
     
-    if not all([temp_file_path, temp_file_name, target_variable, features]):
+    if not all([dataset_data, dataset_name, target_variable, features]):
         return render(
             request, 
             'featurama/upload_data.html', 
@@ -256,27 +257,8 @@ def _handle_feature_selection(
         )
     
     try:
-        # Load the dataset for validation
-        if temp_file_path.endswith('.csv'):
-            df = pd.read_csv(temp_file_path)
-        elif temp_file_path.endswith('.xlsx'):
-            # Use openpyxl for .xlsx files
-            df = pd.read_excel(temp_file_path, engine='openpyxl')
-        elif temp_file_path.endswith('.xls'):
-            # Use xlrd for .xls files
-            df = pd.read_excel(temp_file_path, engine='xlrd')
-        else:
-            # Get extension from original filename
-            _, ext = os.path.splitext(temp_file_name.lower())
-            if ext == '.csv':
-                df = pd.read_csv(temp_file_path)
-            elif ext == '.xlsx':
-                df = pd.read_excel(temp_file_path, engine='openpyxl')
-            elif ext == '.xls':
-                df = pd.read_excel(temp_file_path, engine='xlrd')
-            else:
-                # Try to infer - this might still fail
-                df = pd.read_csv(temp_file_path)
+        # Load the dataset from JSON
+        df = pd.read_json(dataset_data)
         
         # Validate dataset against requirements
         is_valid, error_message = validate_dataset(
@@ -300,31 +282,25 @@ def _handle_feature_selection(
                 }
             )
 
-        # Read the temporary file for dataset creation
-        with open(temp_file_path, 'rb') as f:
-            file_content = f.read()
-
-        # Create dataset with the file, target variable, and selected features
+        # Create dataset with the data, target variable, and selected features
         dataset = DatasetService.create_dataset(
-            name=os.path.splitext(temp_file_name)[0],
+            name=os.path.splitext(dataset_name)[0],
             target_variable=target_variable,
             selected_features=selected_features
         )
 
-        # Save the file to the dataset
-        dataset.file.save(
-            temp_file_name,
-            ContentFile(file_content)
-        )
+        # Save the DataFrame as JSON
+        dataset.save_dataframe(df)
 
         # Update pipeline with the new dataset
         pipeline.dataset = dataset
         pipeline.save()
-
-        # Clean up
-        clean_up_temp_file(request)
         
         # Clean up session
+        if 'dataset_data' in request.session:
+            del request.session['dataset_data']
+        if 'dataset_name' in request.session:
+            del request.session['dataset_name']
         if 'dataset_features' in request.session:
             del request.session['dataset_features']
         if 'target_variable' in request.session:
@@ -364,7 +340,7 @@ def configure_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
             form.save()
             
             # Run the complete pipeline analysis after saving the configuration
-            run_pipeline_analysis(pipeline)
+            run_pipeline(pipeline)
             
             return redirect(
                 'featurama:results_summary', 
@@ -432,7 +408,7 @@ def delete_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
         ).exclude(pk=pipeline.pk).count()
         
         if other_pipelines == 0:
-            # Safe to delete the dataset as well (will delete its file)
+            # Safe to delete the dataset as well
             dataset = pipeline.dataset
             pipeline.delete()
             dataset.delete()

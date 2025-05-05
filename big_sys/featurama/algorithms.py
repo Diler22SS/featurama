@@ -8,29 +8,30 @@ import io
 import random
 
 # Third-party imports
-# Configure matplotlib to use non-interactive backend
 import matplotlib
 matplotlib.use('Agg')  # Must be called before importing pyplot
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.feature_selection import VarianceThreshold, SelectKBest, f_classif, mutual_info_classif
-from pymrmr import mRMR
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.feature_selection import RFE
-from mlxtend.feature_selection import SequentialFeatureSelector as SFS
-from xgboost import XGBClassifier
-from sklearn.metrics import accuracy_score, roc_auc_score, f1_score
 import shap
+from django.core.files.base import ContentFile
+from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+from pymrmr import mRMR
+from sklearn.feature_selection import (
+    RFE, SelectKBest, VarianceThreshold, 
+    f_classif, mutual_info_classif
+)
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from django.core.files.base import ContentFile
+from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
 
 # Local application imports
 from .models import (
-    Pipeline, FeatureSelectionResult, 
-    PerformanceMetric, ShapExplanation
+    FeatureSelectionResult, PerformanceMetric, 
+    Pipeline, ShapExplanation
 )
 
 
@@ -45,12 +46,14 @@ def filter_variance_threshold(pipeline: Pipeline, X, y=None, **kwargs) -> Featur
         )
 
     all_features = pipeline.dataset.user_selected_features
+    print(f"Filter selected features IN variance threshold: {all_features}")
     X_all = X[all_features]
 
     threshold = kwargs.get('threshold', 0.1)
     selector = VarianceThreshold(threshold=threshold)
     selector.fit(X_all, y)
     selected_columns = X_all.columns[selector.get_support()]
+    print(f"Filter selected features OUT variance threshold: {selected_columns}")
 
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
@@ -68,6 +71,7 @@ def filter_anova(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionResult:
         )
 
     all_features = pipeline.dataset.user_selected_features
+    print(f"Filter selected features IN anova: {all_features}")
     X_all = X[all_features]
 
     k = kwargs.get('k', 'all')
@@ -88,6 +92,7 @@ def filter_anova(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionResult:
     print(feature_scores)
 
     top_features = feature_scores[feature_scores['p_value'] < 0.05]['feature'].tolist()
+    print(f"Filter selected features OUT anova: {top_features}")
 
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
@@ -105,6 +110,7 @@ def filter_mutual_info(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionRe
         )
 
     all_features = pipeline.dataset.user_selected_features
+    print(f"Filter selected features IN mutual info: {all_features}")
     X_all = X[all_features]
 
     k = kwargs.get('k', 'all')
@@ -118,7 +124,7 @@ def filter_mutual_info(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionRe
     print(feature_scores)
 
     top_features = feature_scores[feature_scores['mutual_info'] > 0.1]['feature'].tolist()
-
+    print(f"Filter selected features OUT mutual info: {top_features}")
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
         filtered_features=top_features
@@ -135,6 +141,7 @@ def filter_mrmr(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionResult:
         )   
 
     all_features = pipeline.dataset.user_selected_features
+    print(f"Filter selected features IN mRMR: {all_features}")
     X_all = X[all_features] 
 
     k = kwargs.get('k', 0.5 * X.shape[1])
@@ -145,6 +152,7 @@ def filter_mrmr(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionResult:
     selected = [col for col in selected if col != 'target']
     if not selected:
         raise ValueError("No valid features selected by mRMR")
+    print(f"Filter selected features OUT mRMR: {selected}")
 
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
@@ -165,6 +173,7 @@ def wrapper_sfs_logreg(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionRe
 
     # Get filtered features from previous step if available
     filtered_features = FeatureSelectionResult.objects.filter(pipeline=pipeline).first().filtered_features
+    print(f"Wrapper selected features IN sfs logreg: {filtered_features}")
     X_filtered = X[filtered_features]
 
     # Scale the data
@@ -182,6 +191,7 @@ def wrapper_sfs_logreg(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionRe
     sfs = SFS(model, k_features=k_features, forward=True, floating=False, scoring='roc_auc', verbose=2, cv=5)
     sfs.fit(X_scaled.values, y.values)
     selected_features = list(X_filtered.columns[list(sfs.k_feature_idx_)])
+    print(f"Wrapper selected features OUT sfs logreg: {selected_features}")
 
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
@@ -202,6 +212,7 @@ def wrapper_sfs_tree(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionResu
 
     # Get filtered features from previous step if available
     filtered_features = FeatureSelectionResult.objects.filter(pipeline=pipeline).first().filtered_features
+    print(f"Wrapper selected features IN sfs tree: {filtered_features}")
     X_filtered = X[filtered_features]
 
     model = DecisionTreeClassifier(
@@ -217,6 +228,7 @@ def wrapper_sfs_tree(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionResu
     sfs = SFS(model, k_features=k_features, forward=True, floating=False, scoring='roc_auc', verbose=2, cv=5)
     sfs.fit(X_filtered.values, y.values)
     selected_features = list(X_filtered.columns[list(sfs.k_feature_idx_)])
+    print(f"Wrapper selected features OUT sfs tree: {selected_features}")
 
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
@@ -237,6 +249,7 @@ def wrapper_rfe_logreg(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionRe
 
     # Get filtered features from previous step if available
     filtered_features = FeatureSelectionResult.objects.filter(pipeline=pipeline).first().filtered_features
+    print(f"Wrapper selected features IN rfe logreg: {filtered_features}")
     X_filtered = X[filtered_features]
 
     n_features = kwargs.get('n_features_to_select', None)
@@ -253,7 +266,8 @@ def wrapper_rfe_logreg(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionRe
     )
     rfe = RFE(estimator=model, n_features_to_select=n_features, verbose=2)
     rfe.fit(X_scaled, y)
-    selected_features = list(X.columns[rfe.support_])
+    selected_features = list(X_filtered.columns[rfe.support_])
+    print(f"Wrapper selected features OUT rfe logreg: {selected_features}")
 
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
@@ -274,6 +288,7 @@ def wrapper_rfe_tree(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionResu
 
     # Get filtered features from previous step if available
     filtered_features = FeatureSelectionResult.objects.filter(pipeline=pipeline).first().filtered_features
+    print(f"Wrapper selected features IN rfe tree: {filtered_features}")
     X_filtered = X[filtered_features]
 
     n_features = kwargs.get('n_features_to_select', None)
@@ -289,6 +304,7 @@ def wrapper_rfe_tree(pipeline: Pipeline, X, y, **kwargs) -> FeatureSelectionResu
     rfe = RFE(estimator=model, n_features_to_select=n_features, verbose=2)
     rfe.fit(X_filtered, y)
     selected_features = list(X_filtered.columns[rfe.support_])
+    print(f"Wrapper selected features OUT rfe tree: {selected_features}")
 
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
@@ -312,7 +328,7 @@ def shap_tree_explainer( model, X, **kwargs) -> tuple:
     return explainer, shap_values
 
 
-def _generate_global_shap_plot(X,explainer, shap_values) -> bytes:
+def _generate_global_shap_plot(X, explainer, shap_values) -> bytes:
     """Generate a random global SHAP plot.
     
     Args:
@@ -402,6 +418,7 @@ def model_logistic_regression(pipeline: Pipeline, X, y, **kwargs) -> tuple:
 
     # Get wrapped features from previous step if available
     wrapped_features = FeatureSelectionResult.objects.filter(pipeline=pipeline).first().wrapped_features
+    print(f"Model selected features IN logreg: {wrapped_features}")
     X_wrapped = X[wrapped_features]
 
     X_train, X_test, y_train, y_test = train_test_split(X_wrapped, y, test_size=0.2, random_state=42)
@@ -427,11 +444,16 @@ def model_logistic_regression(pipeline: Pipeline, X, y, **kwargs) -> tuple:
     global_plot = _generate_global_shap_plot(X_test_scaled, explainer, shap_values)
     local_plot = _generate_local_shap_plot(pipeline) # TODO: add local plot
 
+    metrics = {
+        'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test_scaled)[:, 1]),
+        'accuracy': accuracy_score(y_test, y_pred),
+        'f1_score': f1_score(y_test, y_pred)
+    }
+    print(f"Model metrics OUT logreg: {metrics}")
+
     return PerformanceMetric.objects.create(
         pipeline=pipeline,
-        roc_auc=roc_auc_score(y_test, model.predict_proba(X_test_scaled)[:, 1]),
-        accuracy=accuracy_score(y_test, y_pred),
-        f1_score=f1_score(y_test, y_pred)
+        **metrics
     ), ShapExplanation.objects.create(
         pipeline=pipeline,
         global_explanation_image=ContentFile(global_plot, name=f'global_shap_{pipeline.id}.png'),
@@ -454,6 +476,7 @@ def model_xgb_linear(pipeline: Pipeline, X, y, **kwargs) -> tuple:
 
     # Get wrapped features from previous step if available
     wrapped_features = FeatureSelectionResult.objects.filter(pipeline=pipeline).first().wrapped_features
+    print(f"Model selected features IN xgb linear: {wrapped_features}")
     X_wrapped = X[wrapped_features]
 
     X_train, X_test, y_train, y_test = train_test_split(X_wrapped, y, test_size=0.2, random_state=42)
@@ -472,11 +495,16 @@ def model_xgb_linear(pipeline: Pipeline, X, y, **kwargs) -> tuple:
     global_plot = _generate_global_shap_plot(X_test_scaled, explainer, shap_values)
     local_plot = _generate_local_shap_plot(pipeline) # TODO: add local plot
 
+    metrics = {
+        'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test_scaled)[:, 1]),
+        'accuracy': accuracy_score(y_test, y_pred),
+        'f1_score': f1_score(y_test, y_pred)
+    }
+    print(f"Model metrics OUT xgb linear: {metrics}")
+
     return PerformanceMetric.objects.create(
         pipeline=pipeline,
-        roc_auc=roc_auc_score(y_test, model.predict_proba(X_test_scaled)[:, 1]),
-        accuracy=accuracy_score(y_test, y_pred),
-        f1_score=f1_score(y_test, y_pred)
+        **metrics
     ), ShapExplanation.objects.create(
         pipeline=pipeline,
         global_explanation_image=ContentFile(global_plot, name=f'global_shap_{pipeline.id}.png'),
@@ -499,6 +527,7 @@ def model_decision_tree(pipeline: Pipeline, X, y, **kwargs) -> tuple:
 
     # Get wrapped features from previous step if available
     wrapped_features = FeatureSelectionResult.objects.filter(pipeline=pipeline).first().wrapped_features
+    print(f"Model selected features IN decision tree: {wrapped_features}")
     X_wrapped = X[wrapped_features]
 
     X_train, X_test, y_train, y_test = train_test_split(X_wrapped, y, test_size=0.2, random_state=42)
@@ -521,11 +550,16 @@ def model_decision_tree(pipeline: Pipeline, X, y, **kwargs) -> tuple:
     global_plot = _generate_global_shap_plot(X_test, explainer, shap_values)
     local_plot = _generate_local_shap_plot(pipeline) # TODO: add local plot
 
+    metrics = {
+        'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]),
+        'accuracy': accuracy_score(y_test, y_pred),
+        'f1_score': f1_score(y_test, y_pred)
+    }
+    print(f"Model metrics OUT decision tree: {metrics}")
+
     return PerformanceMetric.objects.create(
         pipeline=pipeline,
-        roc_auc=roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]),
-        accuracy=accuracy_score(y_test, y_pred),
-        f1_score=f1_score(y_test, y_pred)
+        **metrics
     ), ShapExplanation.objects.create(
         pipeline=pipeline,
         global_explanation_image=ContentFile(global_plot, name=f'global_shap_{pipeline.id}.png'),
@@ -548,6 +582,7 @@ def model_xgb_tree(pipeline: Pipeline, X, y, **kwargs) -> tuple:
 
     # Get wrapped features from previous step if available
     wrapped_features = FeatureSelectionResult.objects.filter(pipeline=pipeline).first().wrapped_features
+    print(f"Model selected features IN xgb tree: {wrapped_features}")
     X_wrapped = X[wrapped_features]
 
     X_train, X_test, y_train, y_test = train_test_split(X_wrapped, y, test_size=0.2, random_state=42)
@@ -561,11 +596,16 @@ def model_xgb_tree(pipeline: Pipeline, X, y, **kwargs) -> tuple:
     global_plot = _generate_global_shap_plot(X_test, explainer, shap_values)
     local_plot = _generate_local_shap_plot(pipeline) # TODO: add local plot
 
+    metrics = {
+        'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]),
+        'accuracy': accuracy_score(y_test, y_pred),
+        'f1_score': f1_score(y_test, y_pred)
+    }
+    print(f"Model metrics OUT xgb tree: {metrics}")
+
     return PerformanceMetric.objects.create(
         pipeline=pipeline,
-        roc_auc=roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]),
-        accuracy=accuracy_score(y_test, y_pred),
-        f1_score=f1_score(y_test, y_pred)
+        **metrics
     ), ShapExplanation.objects.create(
         pipeline=pipeline,
         global_explanation_image=ContentFile(global_plot, name=f'global_shap_{pipeline.id}.png'),
@@ -606,15 +646,47 @@ def run_pipeline(pipeline: Pipeline) -> None:
     Args:
         pipeline: The pipeline to analyze
     """
-    X = pipeline.dataset.data
-    y = pipeline.dataset.target
+    # Get the dataset
+    df = pipeline.dataset.get_dataframe()
+    target_var = pipeline.dataset.target_variable
     
-    
-    # Step 1: Run feature selection
-    run_feature_selection(pipeline)
-    
-    # Step 2: Evaluate the model
-    evaluate_model(pipeline)
-    
-    # Step 3: Generate SHAP explanations
-    generate_shap_plots(pipeline) 
+    # Split into features and target
+    X = df.drop(columns=[target_var])
+    y = df[target_var]
+
+    config = {
+        'filter_method': pipeline.filter_method,
+        'wrapper_method': pipeline.wrapper_method,
+        'model_method': pipeline.model_method,
+    }
+    print(f"Running pipeline with config: {config}")
+
+    # Validate configuration
+    required_keys = ['model_method']
+    for key in required_keys:
+        if key not in config:
+            raise ValueError(f"Missing required configuration key: {key}")  
+
+    if config.get('filter_method') and config['filter_method'] not in FILTER_METHODS:
+        raise ValueError(f"Invalid filter_method: {config['filter_method']}")
+    if config.get('wrapper_method') and config['wrapper_method'] not in WRAPPER_METHODS:
+        raise ValueError(f"Invalid wrapper_method: {config['wrapper_method']}")
+    if config['model_method'] not in MODEL_METHODS:
+        raise ValueError(f"Invalid model_method: {config['model_method']}")
+
+    # Step 1: Filter Method (Optional)
+    if config.get('filter_method'):
+        filter_func = FILTER_METHODS[config['filter_method']]
+        filter_params = config.get('filter_params', {})
+        filter_func(pipeline, X.copy(), y.copy(), **filter_params)
+
+    # Step 2: Wrapper Method (Optional)
+    if config.get('wrapper_method'):
+        wrapper_func = WRAPPER_METHODS[config['wrapper_method']]
+        wrapper_params = config.get('wrapper_params', {})
+        wrapper_func(pipeline, X.copy(), y.copy(), **wrapper_params)
+
+    # Step 3: Model Training and SHAP Analysis
+    model_func = MODEL_METHODS[config['model_method']]
+    model_params = config.get('model_params', {})
+    model_func(pipeline, X.copy(), y.copy(), **model_params)

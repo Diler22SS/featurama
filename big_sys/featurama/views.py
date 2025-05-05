@@ -3,8 +3,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpRequest, HttpResponse
 from django.db import models
+from django.conf import settings
 
-from .models import Pipeline, FeatureSelectionResult
+from .models import Pipeline, FeatureSelectionResult, ShapExplanation
 from .utils import (
     read_dataset_file, validate_dataset
 )
@@ -16,6 +17,9 @@ from .forms import (
 from .algorithms import run_pipeline
 import os
 import pandas as pd
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
 
 
 def pipelines(request: HttpRequest) -> HttpResponse:
@@ -483,3 +487,128 @@ def delete_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
         pipeline.delete()
         
     return redirect('featurama:pipelines')
+
+
+def export_report(request: HttpRequest, pipeline_id: int) -> HttpResponse:
+    """Export pipeline results as PDF report."""
+    pipeline = get_object_or_404(Pipeline, pk=pipeline_id)
+    
+    # Get all related data
+    results = PipelineResultsService.get_pipeline_results_context(pipeline)
+    
+    # Create PDF response
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="pipeline_{pipeline_id}_report.pdf"'
+    
+    # Create PDF document
+    doc = SimpleDocTemplate(response, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
+    
+    # Add title
+    title = Paragraph(f"Pipeline #{pipeline_id} Report", styles['Title'])
+    story.append(title)
+    story.append(Spacer(1, 12))
+    
+    # Add pipeline info
+    story.append(Paragraph("Pipeline Information", styles['Heading1']))
+    info = [
+        f"Dataset: {pipeline.dataset.name}",
+        f"Filter Method: {pipeline.filter_method}",
+        f"Wrapper Method: {pipeline.wrapper_method}",
+        f"Model Method: {pipeline.model_method}"
+    ]
+    for item in info:
+        story.append(Paragraph(item, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Add metrics
+    story.append(Paragraph("Model Metrics", styles['Heading1']))
+    metrics = [
+        f"ROC-AUC: {results['metrics']['roc_auc']}",
+        f"Accuracy: {results['metrics']['accuracy']}",
+        f"F1 Score: {results['metrics']['f1']}"
+    ]
+    for item in metrics:
+        story.append(Paragraph(item, styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Add features
+    story.append(Paragraph("Selected Features", styles['Heading1']))
+    story.append(Paragraph("User Selected Features:", styles['Heading2']))
+    for feature in results['user_selected_features']:
+        story.append(Paragraph(f"- {feature}", styles['Normal']))
+    story.append(Spacer(1, 6))
+    
+    story.append(Paragraph("Algorithm Selected Features:", styles['Heading2']))
+    for feature in results['selected_features']:
+        story.append(Paragraph(f"- {feature}", styles['Normal']))
+    story.append(Spacer(1, 12))
+    
+    # Add SHAP Analysis
+    story.append(Paragraph("SHAP Analysis", styles['Heading1']))
+    
+    # Get the latest SHAP explanation
+    try:
+        shap_explanation = ShapExplanation.objects.filter(
+            pipeline=pipeline
+        ).order_by('-created_at').first()
+        
+        if shap_explanation:
+            # Add Global SHAP Plot
+            story.append(Paragraph("Global Feature Importance", styles['Heading2']))
+            if shap_explanation.global_explanation_image:
+                try:
+                    img = Image(
+                        shap_explanation.global_explanation_image.path,
+                        width=400,
+                        height=300
+                    )
+                    story.append(img)
+                except Exception as e:
+                    story.append(Paragraph(
+                        f"Error loading global SHAP plot: {str(e)}",
+                        styles['Normal']
+                    ))
+            else:
+                story.append(Paragraph(
+                    "No global SHAP plot available",
+                    styles['Normal']
+                ))
+            story.append(Spacer(1, 12))
+            
+            # Add Local SHAP Plot
+            story.append(Paragraph("Local Feature Importance", styles['Heading2']))
+            if shap_explanation.local_explanation_image:
+                try:
+                    img = Image(
+                        shap_explanation.local_explanation_image.path,
+                        width=400,
+                        height=300
+                    )
+                    story.append(img)
+                except Exception as e:
+                    story.append(Paragraph(
+                        f"Error loading local SHAP plot: {str(e)}",
+                        styles['Normal']
+                    ))
+            else:
+                story.append(Paragraph(
+                    "No local SHAP plot available",
+                    styles['Normal']
+                ))
+        else:
+            story.append(Paragraph(
+                "No SHAP analysis available for this pipeline",
+                styles['Normal']
+            ))
+    except Exception as e:
+        story.append(Paragraph(
+            f"Error accessing SHAP analysis: {str(e)}",
+            styles['Normal']
+        ))
+    
+    # Build PDF
+    doc.build(story)
+    
+    return response

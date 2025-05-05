@@ -18,4 +18,6 @@ urlpatterns = [
          views.results_summary, name='results_summary'),
     path('featurama/pipelines/<int:pipeline_id>/delete',
          views.delete_pipeline, name='delete_pipeline'),
+    path('featurama/pipelines/<int:pipeline_id>/export_report',
+         views.export_report, name='export_report'),
 ]

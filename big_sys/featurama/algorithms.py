@@ -47,12 +47,12 @@ class FeatureSelectionError(Exception):
     pass
 
 def _create_empty_result(pipeline: Pipeline) -> FeatureSelectionResult:
-    """Create an empty feature selection result."""
-    return FeatureSelectionResult.objects.create(
+        """Create an empty feature selection result."""
+        return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
-        filtered_features=[],
-        wrapped_features=[]
-    )
+            filtered_features=[],
+            wrapped_features=[]
+        )
 
 def _create_empty_metrics(pipeline: Pipeline) -> Tuple[PerformanceMetric, ShapExplanation]:
     """Create empty performance metrics and SHAP explanation."""
@@ -91,7 +91,6 @@ def _scale_features(X: pd.DataFrame) -> pd.DataFrame:
 
 def _generate_global_shap_plot(
     X: pd.DataFrame,
-    explainer: shap.Explainer,
     shap_values: np.ndarray
 ) -> bytes:
     """Generate a global SHAP plot."""
@@ -117,25 +116,29 @@ def _generate_global_shap_plot(
     buf.seek(0)
     return buf.getvalue()
 
-def _generate_local_shap_plot(pipeline: Pipeline) -> bytes:
-    """Generate a local SHAP plot."""
-    plt.figure(figsize=(10, 6))
-    
-    features = (
-        pipeline.dataset.user_selected_features[:5]
-        if pipeline.dataset and pipeline.dataset.user_selected_features
-        else [f'Feature {i}' for i in range(5)]
+def _generate_local_shap_plot(
+    X: pd.DataFrame,
+    shap_values: np.ndarray
+) -> bytes:
+    """Generate a SHAP-distribution plot."""
+    plt.figure(figsize=(14, 8), dpi=150)
+    shap.summary_plot(
+        shap_values, 
+        X, 
+        feature_names=X.columns, 
+        show=False
     )
-    
-    shap_values = [random.uniform(-1, 1) for _ in range(len(features))]
-    colors = ['red' if val < 0 else 'blue' for val in shap_values]
-    
-    plt.barh(features, shap_values, color=colors)
-    plt.axvline(x=0, color='gray', linestyle='-', alpha=0.3)
-    plt.xlabel('SHAP Value')
-    plt.title('Local Feature Impact (Sample Prediction)')
+    plt.xlabel(
+        "SHAP value (impact on model output)", 
+        fontsize=12
+    )
+    plt.tick_params(axis='y', labelsize=10)
+    plt.title(
+        "Распределение SHAP-значений по признакам", 
+        fontsize=14
+    )
     plt.tight_layout()
-    
+
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
     plt.close()
@@ -162,11 +165,11 @@ def filter_variance_threshold(
     selector.fit(X_all, y)
     selected_columns = X_all.columns[selector.get_support()]
     print(f"Filter selected features OUT variance threshold: {len(selected_columns)} \n {selected_columns.tolist()}", end="\n\n")
-
+        
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
-        filtered_features=selected_columns.tolist()
-    )
+            filtered_features=selected_columns.tolist()
+        )
 
 def filter_anova(
     pipeline: Pipeline,
@@ -186,25 +189,25 @@ def filter_anova(
     k = kwargs.get('k', 'all')
     selector = SelectKBest(score_func=f_classif, k=k)
     selector.fit(X_scaled, y)
-
+        
     scores = selector.scores_
     p_values = selector.pvalues_
     feature_scores = pd.DataFrame({
-        'feature': X_all.columns,
-        'f_score': scores,
-        'p_value': p_values
-    })
+            'feature': X_all.columns,
+            'f_score': scores,
+            'p_value': p_values
+        })
     print(feature_scores)
-
+        
     top_features = feature_scores[
         feature_scores['p_value'] < 0.05
-    ]['feature'].tolist()
+        ]['feature'].tolist()
     print(f"Filter selected features OUT anova: {len(top_features)} \n {top_features}", end="\n\n")
-
+        
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
-        filtered_features=top_features
-    )
+            filtered_features=top_features
+        )
 
 def filter_mutual_info(
     pipeline: Pipeline,
@@ -222,7 +225,7 @@ def filter_mutual_info(
 
     k = kwargs.get('k', 'all')
     selector = SelectKBest(score_func=mutual_info_classif, k=k)
-    selector.fit(X_all, y)
+    selector.fit(X_all, y)  
     
     scores = selector.scores_
     feature_scores = pd.DataFrame({
@@ -447,7 +450,16 @@ def shap_tree_explainer(
     """Compute SHAP values using TreeExplainer."""
     explainer = shap.TreeExplainer(model, **kwargs)
     shap_values = explainer.shap_values(X)
-    return explainer, shap_values
+
+    if isinstance(shap_values, np.ndarray):
+        if len(shap_values.shape) == 2:
+            return explainer, shap_values
+        elif len(shap_values.shape) == 3:
+            return explainer, shap_values[:, :, 1]
+        else:
+            raise ValueError(f"Unexpected shap_values shape: {shap_values.shape}")
+    else:
+        raise ValueError("Unexpected type for shap_values")
 
 # Model Methods
 def model_logistic_regression(
@@ -486,8 +498,8 @@ def model_logistic_regression(
     y_pred = model.predict(X_test_scaled)
     explainer, shap_values = shap_linear_explainer(model, X_test_scaled)
 
-    global_plot = _generate_global_shap_plot(X_test_scaled, explainer, shap_values)
-    local_plot = _generate_local_shap_plot(pipeline)
+    global_plot = _generate_global_shap_plot(X_test_scaled, shap_values)
+    local_plot = _generate_local_shap_plot(X_test_scaled, shap_values)
 
     metrics = {
         'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test_scaled)[:, 1]),
@@ -545,8 +557,8 @@ def model_xgb_linear(
     y_pred = model.predict(X_test_scaled)
     explainer, shap_values = shap_linear_explainer(model, X_test_scaled)
 
-    global_plot = _generate_global_shap_plot(X_test_scaled, explainer, shap_values)
-    local_plot = _generate_local_shap_plot(pipeline)
+    global_plot = _generate_global_shap_plot(X_test_scaled, shap_values)
+    local_plot = _generate_local_shap_plot(X_test_scaled, shap_values)
 
     metrics = {
         'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test_scaled)[:, 1]),
@@ -588,9 +600,9 @@ def model_decision_tree(
         X_manual,
         y,
         test_size=DEFAULT_TEST_SIZE,
-        random_state=DEFAULT_RANDOM_STATE
-    )
-    
+            random_state=DEFAULT_RANDOM_STATE
+        )
+        
     model = DecisionTreeClassifier(
         criterion='gini',
         splitter='best',
@@ -605,26 +617,26 @@ def model_decision_tree(
     y_pred = model.predict(X_test)
     explainer, shap_values = shap_tree_explainer(model, X_test)
 
-    global_plot = _generate_global_shap_plot(X_test, explainer, shap_values)
-    local_plot = _generate_local_shap_plot(pipeline)
+    global_plot = _generate_global_shap_plot(X_test, shap_values)
+    local_plot = _generate_local_shap_plot(X_test, shap_values)
 
     metrics = {
         'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]),
-        'accuracy': accuracy_score(y_test, y_pred),
-        'f1_score': f1_score(y_test, y_pred)
-    }
+            'accuracy': accuracy_score(y_test, y_pred),
+            'f1_score': f1_score(y_test, y_pred)
+        }
     print(f"Model metrics OUT decision tree: \n {metrics}", end="\n\n")
 
     return (
         PerformanceMetric.objects.create(pipeline=pipeline, **metrics),
-        ShapExplanation.objects.create(
+            ShapExplanation.objects.create(
             pipeline=pipeline,
-            global_explanation_image=ContentFile(
-                global_plot,
+                global_explanation_image=ContentFile(
+                    global_plot, 
                 name=f'global_shap_{pipeline.id}.png'
-            ),
-            local_explanation_image=ContentFile(
-                local_plot,
+                ),
+                local_explanation_image=ContentFile(
+                    local_plot, 
                 name=f'local_shap_{pipeline.id}.png'
             )
         )
@@ -634,7 +646,7 @@ def model_xgb_tree(
     pipeline: Pipeline,
     X: pd.DataFrame,
     y: pd.Series,
-    **kwargs
+        **kwargs
 ) -> Tuple[PerformanceMetric, ShapExplanation]:
     """Train and evaluate an XGBoost model with tree booster."""
     if not pipeline.dataset or not pipeline.dataset.user_selected_features:
@@ -654,15 +666,15 @@ def model_xgb_tree(
     model = XGBClassifier(
         booster='gbtree',
         eval_metric='auc',
-        random_state=DEFAULT_RANDOM_STATE,
-        **kwargs
-    )
+            random_state=DEFAULT_RANDOM_STATE,
+            **kwargs
+        )
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     explainer, shap_values = shap_tree_explainer(model, X_test)
 
-    global_plot = _generate_global_shap_plot(X_test, explainer, shap_values)
-    local_plot = _generate_local_shap_plot(pipeline)
+    global_plot = _generate_global_shap_plot(X_test, shap_values)
+    local_plot = _generate_local_shap_plot(X_test, shap_values)
 
     metrics = {
         'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]),

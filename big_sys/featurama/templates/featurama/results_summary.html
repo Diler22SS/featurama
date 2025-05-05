@@ -197,7 +197,9 @@
         <a href="{% url 'featurama:pipelines' %}" class="button button-secondary">
             Create New Pipeline
         </a>
-        <button class="button" onclick="exportReport()">Export Report</button>
+        <a href="{% url 'featurama:export_report' pipeline.id %}" class="button button-primary">
+            Export Report
+        </a>
     </div>
 {% endblock %}
 

@@ -4,8 +4,7 @@ This module contains classes that handle the business logic for the application,
 separating it from the view functions and keeping controllers thin.
 """
 
-from typing import Dict, List, Optional, Any
-from django.db import models
+from typing import Any, Dict, List, Optional
 
 from .models import (
     Dataset, FeatureSelectionResult, 
@@ -18,11 +17,7 @@ class MethodsService:
     
     @staticmethod
     def get_available_methods() -> Dict[str, Dict[str, str]]:
-        """Get all available pipeline methods with descriptions.
-        
-        Returns:
-            Dictionary containing all methods with descriptions
-        """
+        """Get all available pipeline methods with descriptions."""
         filter_methods = {
             'variance_threshold': 'Variance Threshold – removes low-variance features',
             'anova': 'ANOVA – selects features based on F-value',
@@ -39,9 +34,9 @@ class MethodsService:
         
         model_methods = {
             'logreg': 'Logistic Regression – linear model for classification',
-            'xgb_linear': 'XGBoost – gradient boosting framework with linear booster',
+            'xgb_linear': 'XGBoost – gradient boosting with linear booster',
             'dtree': 'Decision Tree – simple decision tree model',
-            'xgb_tree': 'XGBoost – gradient boosting framework with tree booster'
+            'xgb_tree': 'XGBoost – gradient boosting with tree booster'
         }
         
         return {
@@ -56,15 +51,7 @@ class PipelineResultsService:
     
     @staticmethod
     def get_pipeline_metrics(pipeline: Pipeline) -> Dict[str, Optional[float]]:
-        """Get metrics for a pipeline.
-        
-        Args:
-            pipeline: The pipeline object
-            
-        Returns:
-            Dictionary with metrics
-        """
-        # Try to get metrics from the database
+        """Get performance metrics for a pipeline."""
         try:
             metric = PerformanceMetric.objects.filter(
                 pipeline=pipeline
@@ -79,7 +66,6 @@ class PipelineResultsService:
         except PerformanceMetric.DoesNotExist:
             pass
             
-        # Return empty metrics if none found
         return {
             'roc_auc': None,
             'accuracy': None,
@@ -88,15 +74,7 @@ class PipelineResultsService:
     
     @staticmethod
     def get_selected_features(pipeline: Pipeline) -> List[str]:
-        """Get selected features for a pipeline.
-        
-        Args:
-            pipeline: The pipeline object
-            
-        Returns:
-            List of selected feature names
-        """
-        # First try to get algorithmic selected features
+        """Get algorithm-selected features for a pipeline."""
         try:
             result = FeatureSelectionResult.objects.filter(
                 pipeline=pipeline
@@ -115,43 +93,35 @@ class PipelineResultsService:
     
     @staticmethod
     def get_user_selected_features(pipeline: Pipeline) -> List[str]:
-        """Get user selected features for a pipeline.
-        
-        Args:
-            pipeline: The pipeline object
-            
-        Returns:
-            List of user selected feature names
-        """
+        """Get user-selected features for a pipeline."""
         if pipeline.dataset and pipeline.dataset.user_selected_features:
             return pipeline.dataset.user_selected_features
         return []
     
     @staticmethod
     def get_shap_plots(pipeline: Pipeline) -> Dict[str, Optional[str]]:
-        """Get SHAP plots for a pipeline.
-        
-        Args:
-            pipeline: The pipeline object
-            
-        Returns:
-            Dictionary with plot URLs
-        """
-        # Try to get SHAP plots from the database
+        """Get SHAP plot URLs for a pipeline."""
         try:
             shap = ShapExplanation.objects.filter(
                 pipeline=pipeline
             ).order_by('-created_at').first()
             
             if shap:
+                global_url = None
+                if shap.global_explanation_image:
+                    global_url = shap.global_explanation_image.url
+                
+                local_url = None
+                if shap.local_explanation_image:
+                    local_url = shap.local_explanation_image.url
+                
                 return {
-                    'global': shap.global_explanation_image.url if shap.global_explanation_image else None,
-                    'local': shap.local_explanation_image.url if shap.local_explanation_image else None
+                    'global': global_url,
+                    'local': local_url
                 }
         except ShapExplanation.DoesNotExist:
             pass
         
-        # Return empty plot URLs if none found
         return {
             'global': None,
             'local': None
@@ -159,16 +129,11 @@ class PipelineResultsService:
     
     @classmethod
     def get_pipeline_results_context(cls, pipeline: Pipeline) -> Dict[str, Any]:
-        """Get all results data for a pipeline in a format ready for templates.
+        """
+        Get all results data for a pipeline in a format ready for templates.
         
         This method aggregates all results data for a pipeline for easy use
         in views.
-        
-        Args:
-            pipeline: The pipeline object
-            
-        Returns:
-            Context dictionary with all results data
         """
         return {
             'metrics': cls.get_pipeline_metrics(pipeline),
@@ -179,14 +144,7 @@ class PipelineResultsService:
     
     @staticmethod
     def get_related_pipelines(pipeline: Pipeline) -> List[Pipeline]:
-        """Get pipelines related to the given pipeline (same dataset).
-        
-        Args:
-            pipeline: The pipeline to find related pipelines for
-            
-        Returns:
-            List of related pipeline objects
-        """
+        """Get pipelines related to the given pipeline (same dataset)."""
         if not pipeline.dataset:
             return []
             
@@ -202,16 +160,7 @@ class DatasetService:
     def create_dataset(
         name: str, target_variable: str, selected_features: List[str] = None
     ) -> Dataset:
-        """Create a new dataset.
-        
-        Args:
-            name: Name for the dataset
-            target_variable: Target variable name
-            selected_features: List of features selected by the user
-            
-        Returns:
-            The created Dataset object
-        """
+        """Create a new dataset."""
         return Dataset.objects.create(
             name=name,
             target_variable=target_variable,
@@ -222,14 +171,7 @@ class DatasetService:
     def update_selected_features(
         dataset: Dataset, selected_features: List[str]
     ) -> Dataset:
-        """Update the selected features for a dataset.
-        
-        Args:
-            dataset: The dataset to update
-            selected_features: List of features selected by the user
-            
-        Returns:
-            The updated Dataset object
-        """
+        """Update the selected features for a dataset."""
         dataset.user_selected_features = selected_features
-        dataset.save() 
+        dataset.save()
+        return dataset 

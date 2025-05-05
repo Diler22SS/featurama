@@ -9,6 +9,7 @@ from django.db.models.signals import pre_delete
 from django.dispatch import receiver
 import os
 import pandas as pd
+from io import StringIO
 
 
 # Create your models here.
@@ -40,7 +41,7 @@ class Dataset(models.Model):
         """Return the data as a pandas DataFrame."""
         if not self.data:
             return pd.DataFrame()
-        return pd.read_json(self.data)
+        return pd.read_json(StringIO(self.data))
     
     def save_dataframe(self, df: pd.DataFrame) -> None:
         """Save a pandas DataFrame as JSON."""

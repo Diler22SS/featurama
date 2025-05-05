@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 from sklearn.feature_selection import VarianceThreshold, SelectKBest, f_classif, mutual_info_classif
 from pymrmr import mRMR
 from sklearn.linear_model import LogisticRegression
@@ -134,7 +133,7 @@ def wrapper_rfe_logreg(X, y, **kwargs) -> list:
         max_iter=1000,         # Ensure convergence for complex datasets
         random_state=42,
     )
-    rfe = RFE(estimator=model, n_features_to_select=n_features)
+    rfe = RFE(estimator=model, n_features_to_select=n_features, verbose=2)
     rfe.fit(X_scaled, y)
     selected_features = list(X.columns[rfe.support_])
 
@@ -153,7 +152,7 @@ def wrapper_rfe_tree(X, y, **kwargs) -> list:
         max_features=None,          # Number of features to consider when looking for the best split
         random_state=42             # For reproducibility
     )
-    rfe = RFE(estimator=model, n_features_to_select=n_features)
+    rfe = RFE(estimator=model, n_features_to_select=n_features, verbose=2)
     rfe.fit(X, y)
     selected_features = list(X.columns[rfe.support_])
 
@@ -257,7 +256,7 @@ def model_decision_tree(X, y, **kwargs) -> tuple:
 def model_xgb_tree(X, y, **kwargs) -> tuple:
     """Train and evaluate an XGBoost model with tree booster."""
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    
+
     model = XGBClassifier(booster='gbtree', eval_metric='auc', random_state=42, **kwargs)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -292,18 +291,6 @@ MODEL_METHODS = {
     'xgb_linear': model_xgb_linear,
     'dtree': model_decision_tree,
     'xgb_tree': model_xgb_tree,
-}
-
-SHAP_METHODS = {
-    'shap_linear': shap_linear_explainer,
-    'shap_tree': shap_tree_explainer,
-}
-
-MODEL_TO_SHAP = {
-    'logreg': 'shap_linear',
-    'xgb_linear': 'shap_linear',
-    'dtree': 'shap_tree',
-    'xgb_tree': 'shap_tree',
 }
 
 
@@ -391,11 +378,12 @@ if __name__ == "__main__":
 
     # Define configuration
     config = {
-        'filter_method': 'mrmr',      # 'anova', 'mutual_info', 'mrmr'
+        'filter_method': 'anova',               # 'variance_threshold', 'anova', 'mutual_info', 'mrmr'
+        'wrapper_method': 'rfe_tree',           # 'rfe_tree', 'sfs_tree', 'sfs_logreg', 'rfe_logreg'
+        'model_method': 'dtree',                # 'logreg', 'xgb_linear', 'dtree', 'xgb_tree'
+
         # 'filter_params': {'threshold': 0.1},        # {'k': 10}
-        'wrapper_method': 'sfs_tree',             # 'rfe_tree', 'sfs_tree', 'sfs_logreg', 'rfe_logreg'
         # 'wrapper_params': {'k_features': 'best'},   # {'n_features_to_select': 0.5}
-        'model_method': 'dtree',                 # 'logreg', 'xgb_linear', 'dtree', 'xgb_tree'
         # 'model_params': {'C': 1.0, 'penalty': 'l1'}    # {'C': 1.0, 'penalty': 'l1'}, {'max_depth': 3}
     }
 

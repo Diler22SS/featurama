@@ -128,8 +128,10 @@ class FeatureSelectionResult(models.Model):
     
     Attributes:
         pipeline: Foreign key to the associated Pipeline
-        selected_features: JSON field storing features selected by the 
-            algorithm
+        filtered_features: JSON field storing features selected by the 
+            algorithm after the filter method
+        wrapped_features: JSON field storing features selected by the 
+            algorithm after the wrapper method
         created_at: When the result was created
     """
     
@@ -138,7 +140,8 @@ class FeatureSelectionResult(models.Model):
         on_delete=models.CASCADE,
         related_name='feature_selection_results'
     )
-    selected_features = models.JSONField(null=True, blank=True)
+    filtered_features = models.JSONField(null=True, blank=True)
+    wrapped_features = models.JSONField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

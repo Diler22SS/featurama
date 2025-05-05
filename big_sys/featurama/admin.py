@@ -32,7 +32,7 @@ class PipelineAdmin(admin.ModelAdmin):
 
 @admin.register(FeatureSelectionResult)
 class FeatureSelectionResultAdmin(admin.ModelAdmin):
-    list_display = ('id', 'pipeline', 'created_at', 'selected_features')
+    list_display = ('id', 'pipeline', 'created_at', 'filtered_features', 'wrapped_features')
     list_filter = ('created_at',)
     search_fields = ('id', 'pipeline__id')
     date_hierarchy = 'created_at'

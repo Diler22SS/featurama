@@ -96,8 +96,8 @@ class PipelineResultsService:
                 pipeline=pipeline
             ).order_by('-created_at').first()
             
-            if result and result.selected_features:
-                return result.selected_features
+            if result and result.wrapped_features:
+                return result.wrapped_features
         except FeatureSelectionResult.DoesNotExist:
             pass
         

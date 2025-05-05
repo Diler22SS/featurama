@@ -80,8 +80,8 @@ class PipelineResultsService:
                 pipeline=pipeline
             ).order_by('-created_at').first()
             
-            if result and result.wrapped_features:
-                return result.wrapped_features
+            if result and result.manual_features:
+                return result.manual_features
         except FeatureSelectionResult.DoesNotExist:
             pass
         
@@ -111,20 +111,20 @@ class PipelineResultsService:
                 if shap.global_explanation_image:
                     global_url = shap.global_explanation_image.url
                 
-                local_url = None
-                if shap.local_explanation_image:
-                    local_url = shap.local_explanation_image.url
+                distribution_url = None
+                if shap.distribution_explanation_image:
+                    distribution_url = shap.distribution_explanation_image.url
                 
                 return {
                     'global': global_url,
-                    'local': local_url
+                    'distribution': distribution_url
                 }
         except ShapExplanation.DoesNotExist:
             pass
         
         return {
             'global': None,
-            'local': None
+            'distribution': None
         }
     
     @classmethod

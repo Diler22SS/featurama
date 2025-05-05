@@ -143,23 +143,23 @@
         <h2>Features Analysis</h2>
         <div class="features-container">
             <div class="features-section">
-                <h3>User Selected Features</h3>
+                <h3>Initial Features</h3>
                 <ul class="features-list">
                     {% for feature in user_selected_features %}
                         <li class="feature-item">{{ feature }}</li>
                     {% empty %}
-                        <li>No user-selected features available</li>
+                        <li>No initial features available</li>
                     {% endfor %}
                 </ul>
             </div>
             
             <div class="features-section">
-                <h3>Algorithm Selected Features</h3>
+                <h3>Selected Features</h3>
                 <ul class="features-list">
                     {% for feature in selected_features %}
                         <li class="feature-item">{{ feature }}</li>
                     {% empty %}
-                        <li>No algorithm-selected features available</li>
+                        <li>No selected features available</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -177,13 +177,13 @@
             {% endif %}
         </div>
         
-        <h3>Local Importance</h3>
+        <h3>Distribution Importance</h3> 
         <div class="plot-container">
-            {% if shap_plots.local %}
-                <img src="{{ shap_plots.local }}" alt="Local SHAP Plot">
+            {% if shap_plots.distribution %}
+                <img src="{{ shap_plots.distribution }}" alt="Distribution SHAP Plot">
             {% else %}
-                <div class="plot-placeholder">Local SHAP plot will be displayed here</div>
-            {% endif %}
+                <div class="plot-placeholder">Distribution SHAP plot will be displayed here</div>
+            {% endif %} 
         </div>
     </div>
 

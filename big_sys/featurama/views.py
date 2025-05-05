@@ -535,12 +535,12 @@ def export_report(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     
     # Add features
     story.append(Paragraph("Selected Features", styles['Heading1']))
-    story.append(Paragraph("User Selected Features:", styles['Heading2']))
+    story.append(Paragraph("Initial Features:", styles['Heading2']))
     for feature in results['user_selected_features']:
         story.append(Paragraph(f"- {feature}", styles['Normal']))
     story.append(Spacer(1, 6))
     
-    story.append(Paragraph("Algorithm Selected Features:", styles['Heading2']))
+    story.append(Paragraph("Selected Features:", styles['Heading2']))
     for feature in results['selected_features']:
         story.append(Paragraph(f"- {feature}", styles['Normal']))
     story.append(Spacer(1, 12))
@@ -577,24 +577,24 @@ def export_report(request: HttpRequest, pipeline_id: int) -> HttpResponse:
                 ))
             story.append(Spacer(1, 12))
             
-            # Add Local SHAP Plot
-            story.append(Paragraph("Local Feature Importance", styles['Heading2']))
-            if shap_explanation.local_explanation_image:
+            # Add Distribution SHAP Plot 
+            story.append(Paragraph("Distribution Feature Importance", styles['Heading2']))
+            if shap_explanation.distribution_explanation_image:
                 try:
                     img = Image(
-                        shap_explanation.local_explanation_image.path,
+                        shap_explanation.distribution_explanation_image.path,
                         width=400,
                         height=300
                     )
                     story.append(img)
                 except Exception as e:
                     story.append(Paragraph(
-                        f"Error loading local SHAP plot: {str(e)}",
+                        f"Error loading distribution SHAP plot: {str(e)}",
                         styles['Normal']
                     ))
             else:
                 story.append(Paragraph(
-                    "No local SHAP plot available",
+                    "No distribution SHAP plot available",
                     styles['Normal']
                 ))
         else:

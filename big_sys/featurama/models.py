@@ -205,7 +205,7 @@ class ShapExplanation(models.Model):
     Attributes:
         pipeline: Foreign key to the associated Pipeline
         global_explanation_image: Image for global feature importance
-        local_explanation_image: Image for local feature importance
+        distribution_explanation_image: Image for distribution feature importance
         created_at: When the explanation was created
     """
     
@@ -219,7 +219,7 @@ class ShapExplanation(models.Model):
         null=True,
         blank=True
     )
-    local_explanation_image = models.ImageField(
+    distribution_explanation_image = models.ImageField(
         upload_to='shap_explanations/',
         null=True,
         blank=True
@@ -243,10 +243,10 @@ class ShapExplanation(models.Model):
             if os.path.isfile(self.global_explanation_image.path):
                 os.remove(self.global_explanation_image.path)
         
-        # Delete the local explanation image if it exists
-        if self.local_explanation_image:
-            if os.path.isfile(self.local_explanation_image.path):
-                os.remove(self.local_explanation_image.path)
+        # Delete the distribution explanation image if it exists 
+        if self.distribution_explanation_image:
+            if os.path.isfile(self.distribution_explanation_image.path):
+                os.remove(self.distribution_explanation_image.path)
         
         # Call the "real" delete() method
         super().delete(*args, **kwargs)
@@ -270,7 +270,7 @@ def delete_shap_files(sender, instance, **kwargs):
         if os.path.isfile(instance.global_explanation_image.path):
             os.remove(instance.global_explanation_image.path)
     
-    # Delete local explanation image
-    if instance.local_explanation_image:
-        if os.path.isfile(instance.local_explanation_image.path):
-            os.remove(instance.local_explanation_image.path)
+    # Delete distribution explanation image
+    if instance.distribution_explanation_image:
+        if os.path.isfile(instance.distribution_explanation_image.path):
+            os.remove(instance.distribution_explanation_image.path)

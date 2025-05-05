@@ -116,7 +116,7 @@ def _generate_global_shap_plot(
     buf.seek(0)
     return buf.getvalue()
 
-def _generate_local_shap_plot(
+def _generate_distribution_shap_plot(
     X: pd.DataFrame,
     shap_values: np.ndarray
 ) -> bytes:
@@ -499,7 +499,7 @@ def model_logistic_regression(
     explainer, shap_values = shap_linear_explainer(model, X_test_scaled)
 
     global_plot = _generate_global_shap_plot(X_test_scaled, shap_values)
-    local_plot = _generate_local_shap_plot(X_test_scaled, shap_values)
+    distribution_plot = _generate_distribution_shap_plot(X_test_scaled, shap_values)
 
     metrics = {
         'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test_scaled)[:, 1]),
@@ -516,9 +516,9 @@ def model_logistic_regression(
                 global_plot,
                 name=f'global_shap_{pipeline.id}.png'
             ),
-            local_explanation_image=ContentFile(
-                local_plot,
-                name=f'local_shap_{pipeline.id}.png'
+            distribution_explanation_image=ContentFile(
+                distribution_plot,
+                name=f'distribution_shap_{pipeline.id}.png'
             )
         )
     )
@@ -558,7 +558,7 @@ def model_xgb_linear(
     explainer, shap_values = shap_linear_explainer(model, X_test_scaled)
 
     global_plot = _generate_global_shap_plot(X_test_scaled, shap_values)
-    local_plot = _generate_local_shap_plot(X_test_scaled, shap_values)
+    distribution_plot = _generate_distribution_shap_plot(X_test_scaled, shap_values)
 
     metrics = {
         'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test_scaled)[:, 1]),
@@ -575,9 +575,9 @@ def model_xgb_linear(
                 global_plot,
                 name=f'global_shap_{pipeline.id}.png'
             ),
-            local_explanation_image=ContentFile(
-                local_plot,
-                name=f'local_shap_{pipeline.id}.png'
+            distribution_explanation_image=ContentFile(
+                distribution_plot,
+                name=f'distribution_shap_{pipeline.id}.png'
             )
         )
     )
@@ -618,7 +618,7 @@ def model_decision_tree(
     explainer, shap_values = shap_tree_explainer(model, X_test)
 
     global_plot = _generate_global_shap_plot(X_test, shap_values)
-    local_plot = _generate_local_shap_plot(X_test, shap_values)
+    distribution_plot = _generate_distribution_shap_plot(X_test, shap_values)
 
     metrics = {
         'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]),
@@ -635,9 +635,9 @@ def model_decision_tree(
                     global_plot, 
                 name=f'global_shap_{pipeline.id}.png'
                 ),
-                local_explanation_image=ContentFile(
-                    local_plot, 
-                name=f'local_shap_{pipeline.id}.png'
+                distribution_explanation_image=ContentFile(
+                    distribution_plot, 
+                name=f'distribution_shap_{pipeline.id}.png' 
             )
         )
     )
@@ -674,7 +674,7 @@ def model_xgb_tree(
     explainer, shap_values = shap_tree_explainer(model, X_test)
 
     global_plot = _generate_global_shap_plot(X_test, shap_values)
-    local_plot = _generate_local_shap_plot(X_test, shap_values)
+    distribution_plot = _generate_distribution_shap_plot(X_test, shap_values)
 
     metrics = {
         'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]),
@@ -691,9 +691,9 @@ def model_xgb_tree(
                 global_plot,
                 name=f'global_shap_{pipeline.id}.png'
             ),
-            local_explanation_image=ContentFile(
-                local_plot,
-                name=f'local_shap_{pipeline.id}.png'
+            distribution_explanation_image=ContentFile(
+                distribution_plot,
+                name=f'distribution_shap_{pipeline.id}.png' 
             )
         )
     )

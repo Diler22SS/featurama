@@ -53,7 +53,7 @@ class PerformanceMetricAdmin(admin.ModelAdmin):
 class ShapExplanationAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'pipeline', 'created_at', 
-        'global_explanation_image', 'local_explanation_image'
+        'global_explanation_image', 'distribution_explanation_image'
     )
     list_filter = ('created_at',)
     search_fields = ('id', 'pipeline__id')

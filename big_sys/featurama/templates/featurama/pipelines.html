@@ -1,102 +1,235 @@
 {% extends "featurama/base.html" %}
 
-{% block title %}Pipelines - Featurama{% endblock %}
+{% block title %}Пайплайны - Featurama{% endblock %}
 
-{% block header %}Feature Selection Pipelines{% endblock %}
+{% block header %}Пайплайны Выбора Признаков{% endblock %}
+
+{% block nav_pipelines %}active{% endblock %}
 
 {% block additional_styles %}
-    .pipeline-list {
-        list-style-type: none;
-        padding: 0;
+    .pipelines-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: calc(var(--spacing) * 2);
+        margin-top: calc(var(--spacing) * 2);
     }
-    .pipeline-item {
-        margin-bottom: 1rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+    
+    .pipeline-card {
+        background: white;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        transition: transform 0.2s, box-shadow 0.2s;
+        display: flex;
+        flex-direction: column;
     }
+    
+    .pipeline-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .pipeline-header {
+        padding: var(--spacing);
+        background-color: var(--primary-light);
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .pipeline-header h3 {
+        margin: 0;
+        color: var(--primary-dark);
+        font-weight: 500;
+    }
+    
+    .pipeline-body {
+        padding: var(--spacing);
+        flex-grow: 1;
+    }
+    
     .pipeline-info {
-        margin-bottom: 0.5rem;
+        margin-bottom: var(--spacing);
     }
+    
+    .pipeline-info p {
+        margin: 0.5rem 0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .pipeline-info strong {
+        min-width: 110px;
+        display: inline-block;
+    }
+    
     .pipeline-actions {
         display: flex;
         gap: 0.5rem;
+        margin-top: auto;
+        padding: var(--spacing);
+        border-top: 1px solid var(--border);
+        flex-wrap: wrap;
     }
-    .empty-list {
-        padding: 2rem;
+    
+    .empty-state {
         text-align: center;
-        background-color: #f5f5f5;
-        border-radius: 4px;
-        color: #757575;
+        padding: calc(var(--spacing) * 3);
+        background-color: white;
+        border-radius: var(--radius);
+        border: 1px dashed var(--border);
+        color: var(--text-light);
+    }
+    
+    .empty-state p {
+        margin-bottom: var(--spacing);
+    }
+    
+    .empty-state .button {
+        margin-top: var(--spacing);
+    }
+    
+    .create-pipeline {
+        margin-bottom: calc(var(--spacing) * 2);
+    }
+    
+    .pipeline-status {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        margin-left: 0.5rem;
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+    
+    .status-complete {
+        background-color: var(--secondary-light);
+        color: var(--secondary-dark);
+    }
+    
+    .status-config {
+        background-color: var(--primary-light);
+        color: var(--primary-dark);
+    }
+    
+    .status-new {
+        background-color: var(--warning);
+        color: white;
+    }
+    
+    @media (max-width: 600px) {
+        .pipeline-actions {
+            flex-direction: column;
+        }
+        
+        .pipeline-actions .button {
+            width: 100%;
+        }
     }
 {% endblock %}
 
 {% block content %}
-    <div class="section">
-    <form method="post">
-        {% csrf_token %}
+    <div class="create-pipeline">
+        <form method="post">
+            {% csrf_token %}
             <button type="submit" class="button button-primary">
-                Create New Pipeline
+                <span>Создать Новый Пайплайн</span>
             </button>
-    </form>
+        </form>
     </div>
 
-    <div class="section">
-        <h2>Your Pipelines</h2>
-        {% if pipelines %}
-            <ul class="pipeline-list">
-        {% for pipeline in pipelines %}
-                    <li class="pipeline-item">
+    {% if pipelines %}
+        <div class="pipelines-container">
+            {% for pipeline in pipelines %}
+                <div class="pipeline-card">
+                    <div class="pipeline-header">
+                        <h3>
+                            Пайплайн #{{ pipeline.id }}
+                            {% if pipeline.dataset and pipeline.filter_method %}
+                                <span class="pipeline-status status-complete">Завершен</span>
+                            {% elif pipeline.dataset %}
+                                <span class="pipeline-status status-config">Нужна Настройка</span>
+                            {% else %}
+                                <span class="pipeline-status status-new">Новый</span>
+                            {% endif %}
+                        </h3>
+                    </div>
+                    <div class="pipeline-body">
                         <div class="pipeline-info">
-                            <h3>Pipeline #{{ pipeline.id }}</h3>
                             <p>
-                                <strong>Dataset:</strong> 
+                                <strong>Набор Данных:</strong> 
                                 {% if pipeline.dataset %}
-                                    {{ pipeline.dataset.name }}
+                                    <span>{{ pipeline.dataset.name }}</span>
                                 {% else %}
-                                    No dataset attached
+                                    <span class="text-muted">Не задан</span>
                                 {% endif %}
                             </p>
-                            {% if pipeline.filter_method %}
-                                <p><strong>Filter Method:</strong> {{ pipeline.filter_method|title }}</p>
-                            {% endif %}
-                            {% if pipeline.wrapper_method %}
-                                <p><strong>Wrapper Method:</strong> {{ pipeline.wrapper_method|title }}</p>
-                            {% endif %}
-                            {% if pipeline.model_method %}
-                                <p><strong>Model Method:</strong> {{ pipeline.model_method|title }}</p>
-                            {% endif %}
-                        </div>
-                        <div class="pipeline-actions">
-                            {% if pipeline.dataset %}
+                            <p>
+                                <strong>Метод Фильтрации:</strong>
                                 {% if pipeline.filter_method %}
-                                    <a href="{% url 'featurama:results_summary' pipeline.id %}" class="button button-primary">
-                                        View Results
-                                    </a>
+                                    <span>{{ pipeline.filter_method }}</span>
                                 {% else %}
-                                    <a href="{% url 'featurama:configure_pipeline' pipeline.id %}" class="button button-primary">
-                                        Configure
-                                    </a>
+                                    <span class="text-muted">Не задан</span>
                                 {% endif %}
+                            </p>
+                            <p>
+                                <strong>Метод Обертки:</strong>
+                                {% if pipeline.wrapper_method %}
+                                    <span>{{ pipeline.wrapper_method }}</span>
+                                {% else %}
+                                    <span class="text-muted">Не задан</span>
+                                {% endif %}
+                            </p>
+                            <p>
+                                <strong>Модель:</strong>
+                                {% if pipeline.model_method %}
+                                    <span>{{ pipeline.model_method }}</span>
+                                {% else %}
+                                    <span class="text-muted">Не задана</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="pipeline-actions">
+                        {% if pipeline.dataset %}
+                            {% if pipeline.filter_method %}
+                                <a href="{% url 'featurama:results_summary' pipeline.id %}" class="button button-primary">
+                                    Просмотреть Результаты
+                                </a>
                             {% else %}
-                                <a href="{% url 'featurama:upload_data' pipeline.id %}" class="button button-primary">
-                                    Upload Data
+                                <a href="{% url 'featurama:configure_pipeline' pipeline.id %}" class="button button-primary">
+                                    Настроить
                                 </a>
                             {% endif %}
-                            <a href="{% url 'featurama:delete_pipeline' pipeline.id %}" class="button" 
-                               onclick="return confirm('Are you sure you want to delete this pipeline?')">
-                                Delete
+                        {% else %}
+                            <a href="{% url 'featurama:upload_data' pipeline.id %}" class="button button-primary">
+                                Загрузить Данные
                             </a>
-                        </div>
-            </li>
-        {% endfor %}
-    </ul>
-        {% else %}
-            <div class="empty-list">
-                <p>You don't have any pipelines yet. Create one to get started!</p>
-            </div>
-        {% endif %}
-    </div>
+                        {% endif %}
+                        <a href="{% url 'featurama:delete_pipeline' pipeline.id %}" class="button button-outline" 
+                           onclick="return confirm('Вы уверены, что хотите удалить этот пайплайн?')">
+                            Удалить
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 7v10c0 3-1.5 5-5 5H8c-3.5 0-5-2-5-5V7c0-3 1.5-5 5-5h8c3.5 0 5 2 5 5Z" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M14.5 4.5v2c0 1.1.9 2 2 2h2M8 13h4M8 17h8" stroke="currentColor" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <p>У вас пока нет пайплайнов. Создайте один, чтобы начать!</p>
+            <form method="post">
+                {% csrf_token %}
+                <button type="submit" class="button button-primary">
+                    Создать Первый Пайплайн
+                </button>
+            </form>
+        </div>
+    {% endif %}
 {% endblock %}
 
 {% block footer %}

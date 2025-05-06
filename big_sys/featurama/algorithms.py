@@ -700,24 +700,24 @@ def model_xgb_tree(
 
 # Method Dictionaries
 FILTER_METHODS = {
-    'variance_threshold': filter_variance_threshold,
-    'anova': filter_anova,
-    'mutual_info': filter_mutual_info,
-    'mrmr': filter_mrmr,
+    'Variance Threshold': filter_variance_threshold,
+    'ANOVA': filter_anova,
+    'Mutual Information': filter_mutual_info,
+    'MRMR': filter_mrmr,
 }
 
 WRAPPER_METHODS = {
-    'sfs_logreg': wrapper_sfs_logreg,
-    'sfs_tree': wrapper_sfs_tree,
-    'rfe_logreg': wrapper_rfe_logreg,
-    'rfe_tree': wrapper_rfe_tree,
+    'SFS with Logistic Regression': wrapper_sfs_logreg,
+    'SFS with Decision Tree': wrapper_sfs_tree,
+    'RFE with Logistic Regression': wrapper_rfe_logreg,
+    'RFE with Decision Tree': wrapper_rfe_tree,
 }
 
 MODEL_METHODS = {
-    'logreg': model_logistic_regression,
-    'xgb_linear': model_xgb_linear,
-    'dtree': model_decision_tree,
-    'xgb_tree': model_xgb_tree,
+    'Logistic Regression': model_logistic_regression,
+    'XGBoost Linear': model_xgb_linear,
+    'Decision Tree': model_decision_tree,
+    'XGBoost Tree': model_xgb_tree,
 }
 
 def run_pipeline(pipeline: Pipeline, run_model: bool = True) -> None:

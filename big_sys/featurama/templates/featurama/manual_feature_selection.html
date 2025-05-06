@@ -1,140 +1,268 @@
 {% extends "featurama/base.html" %}
 
-{% block title %}Manual Feature Selection - Pipeline {{ pipeline.id }}{% endblock %}
+{% block title %}Ручной Выбор Признаков - Пайплайн {{ pipeline.id }}{% endblock %}
 
-{% block header %}Manual Feature Selection - Pipeline #{{ pipeline.id }}{% endblock %}
+{% block header %}Ручной Выбор Признаков - Пайплайн #{{ pipeline.id }}{% endblock %}
+
+{% block nav_pipelines %}active{% endblock %}
 
 {% block additional_styles %}
     .feature-selection-container {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 2rem;
-        margin-top: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: calc(var(--spacing) * 2);
+        margin-top: calc(var(--spacing) * 2);
     }
     
     .features-section {
-        padding: 1rem;
-        border: 1px solid #eee;
-        border-radius: 4px;
+        padding: var(--spacing);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background-color: white;
+        box-shadow: var(--shadow);
+    }
+    
+    .features-section h3 {
+        margin-top: 0;
+        color: var(--primary-dark);
+        font-size: 1.1rem;
+        font-weight: 500;
     }
     
     .feature-list {
         list-style-type: none;
-        padding: 0;
+        padding: 0.75rem;
         max-height: 400px;
         overflow-y: auto;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-top: var(--spacing);
     }
     
     .feature-item {
-        padding: 0.5rem;
-        border-bottom: 1px solid #eee;
+        margin-bottom: 0.5rem;
+        border-radius: var(--radius);
     }
     
-    .feature-item.selected {
-        background-color: #f0f7ff;
+    .feature-checkbox-label {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        cursor: pointer;
+        width: 100%;
+        border-radius: var(--radius);
+        transition: background-color 0.2s;
+        position: relative;
+    }
+    
+    .feature-checkbox-label:hover {
+        background-color: var(--primary-light);
+    }
+    
+    /* Custom checkbox styling */
+    .feature-checkbox {
+        opacity: 0; /* Hide the default checkbox */
+        position: absolute;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
+    
+    .checkmark {
+        position: relative;
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        margin-right: 0.75rem;
+        background-color: #fff;
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        flex-shrink: 0;
+    }
+    
+    .feature-checkbox:checked ~ .checkmark {
+        background-color: var(--primary);
+        border-color: var(--primary);
+    }
+    
+    .checkmark:after {
+        content: "";
+        position: absolute;
+        display: none;
+        left: 6px;
+        top: 2px;
+        width: 4px;
+        height: 9px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+    
+    .feature-checkbox:checked ~ .checkmark:after {
+        display: block;
+    }
+    
+    .feature-label {
+        flex: 1;
+        margin-right: 0.5rem;
     }
     
     .feature-count {
-        font-size: 0.9em;
-        color: #666;
+        font-size: 0.85rem;
+        color: var(--text-light);
+        margin-top: 0.5rem;
+        display: block;
     }
     
     .search-container {
-        margin-bottom: 1rem;
+        margin-bottom: var(--spacing);
     }
     
     .search-input {
         width: 100%;
         padding: 0.5rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        font-size: 0.9rem;
+    }
+    
+    .search-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--primary-light);
     }
     
     .highlighted {
         background-color: #fff3cd;
     }
     
-    .button-group {
-        margin-top: 2rem;
-    }
-    
     .validation-message {
-        color: #d32f2f;
-        margin-top: 1rem;
+        color: var(--error);
+        padding: 0.5rem;
+        margin-top: var(--spacing);
     }
     
-    .phase-overview {
-        margin-bottom: 2rem;
+    .pipeline-phases {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        margin-bottom: calc(var(--spacing) * 2);
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
     }
     
-    .phase-step {
+    .phase {
         flex: 1;
+        min-width: 130px;
         text-align: center;
-        padding: 1rem;
-        border: 1px solid #eee;
-        border-radius: 4px;
-        margin: 0 0.5rem;
+        padding: 0.75rem 0.5rem;
+        background-color: white;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-right: 2rem;
         position: relative;
+        font-size: 0.9rem;
+        white-space: nowrap;
     }
     
-    .phase-step.active {
-        background-color: #e3f2fd;
-        border-color: #2196F3;
-        font-weight: bold;
+    .phase:last-child {
+        margin-right: 0;
     }
     
-    .phase-step.completed {
-        background-color: #e8f5e9;
-        border-color: #4caf50;
-    }
-    
-    .phase-step:after {
+    .phase::after {
         content: '';
         position: absolute;
         top: 50%;
-        right: -15px;
-        width: 0;
-        height: 0;
-        border-top: 8px solid transparent;
-        border-left: 8px solid #ccc;
-        border-bottom: 8px solid transparent;
-        transform: translateY(-50%);
+        right: -1.5rem;
+        width: 1rem;
+        height: 1rem;
+        border-top: 2px solid var(--border);
+        border-right: 2px solid var(--border);
+        transform: translateY(-50%) rotate(45deg);
     }
     
-    .phase-step:last-child:after {
+    .phase:last-child::after {
         display: none;
+    }
+    
+    .phase.completed {
+        background-color: var(--secondary-light);
+        border-color: var(--secondary);
+        color: var(--secondary-dark);
+    }
+    
+    .phase.active {
+        background-color: var(--primary-light);
+        border-color: var(--primary);
+        color: var(--primary-dark);
+        font-weight: 600;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        margin-left: 0.5rem;
+    }
+    
+    .badge-success {
+        background-color: var(--secondary-light);
+        color: var(--secondary-dark);
+    }
+    
+    .badge-info {
+        background-color: var(--primary-light);
+        color: var(--primary-dark);
+    }
+    
+    .badge-warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    @media (max-width: 768px) {
+        .feature-selection-container {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .select-all-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem; 
+        font-weight: 500;
+        font-size: 0.9rem;
+        padding: 0.25rem 0;
     }
 {% endblock %}
 
 {% block content %}
-    <div class="phase-overview">
-        <div class="phase-step completed">
-            Data Upload
+    <div class="pipeline-phases">
+        <div class="phase completed">
+            Загрузка Данных
         </div>
-        <div class="phase-step completed">
-            Configure Methods
+        <div class="phase completed">
+            Настройка Методов
         </div>
-        <div class="phase-step active">
-            Manual Feature Selection
+        <div class="phase active">
+            Ручной Выбор Признаков
         </div>
-        <div class="phase-step">
-            View Results
+        <div class="phase">
+            Просмотр Результатов
         </div>
     </div>
 
     <div class="section">
-        <h2>Manual Feature Selection</h2>
+        <h2>Ручной Выбор Признаков</h2>
         
-        <p class="description">
-            Review and adjust the features selected by the filter and wrapper methods.
-            Select which features you want to include in the final model training step.
+        <p class="text-muted">
+            Просмотрите и скорректируйте признаки, выбранные методами фильтрации и обертки.
+            Выберите, какие признаки вы хотите включить в финальный этап обучения модели.
         </p>
         
         {% if error %}
-            <div class="alert alert-danger">{{ error }}</div>
+            <div class="validation-message">{{ error }}</div>
         {% endif %}
         
         <form method="post">
@@ -142,38 +270,39 @@
             
             <div class="feature-selection-container">
                 <div class="features-section">
-                    <h3>Selection Process</h3>
-                    <p>Number of features at each step:</p>
-                    <p><strong>User Selected:</strong> {{ user_features|length }}</p>
-                    <p><strong>Filter Method ({{ pipeline.filter_method }}):</strong> {{ filtered_features|length }}</p>
-                    <p><strong>Wrapper Method ({{ pipeline.wrapper_method }}):</strong> {{ wrapped_features|length }}</p>
+                    <h3>Процесс Выбора</h3>
+                    <p>Количество признаков на каждом этапе:</p>
+                    <p><strong>Выбрано Пользователем:</strong> {{ user_features|length }}</p>
+                    <p><strong>Метод Фильтрации ({{ pipeline.filter_method }}):</strong> {{ filtered_features|length }}</p>
+                    <p><strong>Метод Обертки ({{ pipeline.wrapper_method }}):</strong> {{ wrapped_features|length }}</p>
                     
                     <div class="search-container">
-                        <input type="text" id="feature-search" placeholder="Search features..." class="search-input">
+                        <input type="text" id="feature-search" placeholder="Поиск признаков..." class="search-input">
                     </div>
                 </div>
                 
                 <div class="features-section">
-                    <h3>Features for Model Training</h3>
-                    <p class="feature-count"><span id="selected-count">{{ selected_features|length }}</span> features selected</p>
+                    <h3>Признаки для Обучения Модели</h3>
+                    <span class="feature-count"><span id="selected-count">{{ selected_features|length }}</span> признаков выбрано</span>
                     
                     <ul class="feature-list" id="feature-list">
                         {% for feature in user_features %}
                             <li class="feature-item">
-                                <label>
+                                <label class="feature-checkbox-label">
                                     <input type="checkbox" 
                                            name="selected_features" 
                                            value="{{ feature }}" 
                                            {% if feature in selected_features %}checked{% endif %}
                                            class="feature-checkbox">
+                                    <span class="checkmark"></span>
                                     <span class="feature-label">{{ feature }}</span>
                                     
                                     {% if feature in filtered_features and feature in wrapped_features %}
-                                        <small class="badge badge-success">Both methods</small>
+                                        <span class="badge badge-success">Оба метода</span>
                                     {% elif feature in filtered_features %}
-                                        <small class="badge badge-info">Filter only</small>
+                                        <span class="badge badge-info">Только фильтр</span>
                                     {% elif feature in wrapped_features %}
-                                        <small class="badge badge-warning">Wrapper only</small>
+                                        <span class="badge badge-warning">Только обертка</span>
                                     {% endif %}
                                 </label>
                             </li>
@@ -183,9 +312,9 @@
             </div>
             
             <div class="button-group">
-                <button type="submit" class="button button-primary">Train Model</button>
-                <a href="{% url 'featurama:configure_pipeline' pipeline.id %}" class="button button-secondary">
-                    Back to Configuration
+                <button type="submit" class="button button-primary">Обучить Модель</button>
+                <a href="{% url 'featurama:configure_pipeline' pipeline.id %}" class="button button-outline">
+                    Назад к Настройке
                 </a>
             </div>
         </form>

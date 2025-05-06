@@ -1,165 +1,217 @@
 {% extends "featurama/base.html" %}
 
-{% block title %}Results Summary - Pipeline {{ pipeline.id }}{% endblock %}
+{% block title %}Сводка Результатов - Пайплайн {{ pipeline.id }}{% endblock %}
 
-{% block header %}Results Summary - Pipeline #{{ pipeline.id }}{% endblock %}
+{% block header %}Сводка Результатов - Пайплайн #{{ pipeline.id }}{% endblock %}
+
+{% block nav_pipelines %}active{% endblock %}
 
 {% block additional_styles %}
     .metrics-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin-top: 1rem;
+        gap: var(--spacing);
+        margin-top: var(--spacing);
     }
+    
     .metric-card {
-        padding: 1rem;
-        border: 1px solid #eee;
-        border-radius: 4px;
+        padding: var(--spacing);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
         text-align: center;
+        background-color: white;
+        box-shadow: var(--shadow);
     }
+    
     .metric-value {
-        font-size: 1.5em;
-        font-weight: bold;
-        color: #2196F3;
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--primary);
+        margin: 0.5rem 0;
     }
+    
     .plot-container {
-        margin: 1rem 0;
-        padding: 1rem;
-        border: 1px solid #eee;
-        border-radius: 4px;
+        margin: var(--spacing) 0;
+        padding: var(--spacing);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
         min-height: 300px;
         display: flex;
         justify-content: center;
         align-items: center;
-        background-color: #f9f9f9;
+        background-color: white;
+        box-shadow: var(--shadow);
     }
+    
+    .plot-container img {
+        max-width: 100%;
+        height: auto;
+    }
+    
     .plot-placeholder {
-        color: #666;
+        color: var(--text-light);
         font-style: italic;
     }
+    
+    .features-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: calc(var(--spacing) * 2);
+    }
+    
+    .features-section {
+        padding: var(--spacing);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background-color: white;
+        box-shadow: var(--shadow);
+    }
+    
     .features-list {
         list-style-type: none;
         padding: 0;
-        columns: 3;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.5rem;
     }
+    
     .feature-item {
         padding: 0.5rem;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
-    .features-container {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 2rem;
-    }
-    .features-section {
-        padding: 1rem;
-        border: 1px solid #eee;
-        border-radius: 4px;
-    }
-    .phase-overview {
-        margin-bottom: 2rem;
+    
+    .pipeline-phases {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        margin-bottom: calc(var(--spacing) * 2);
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
     }
-    .phase-step {
+    
+    .phase {
         flex: 1;
+        min-width: 130px;
         text-align: center;
-        padding: 1rem;
-        border: 1px solid #eee;
-        border-radius: 4px;
-        margin: 0 0.5rem;
+        padding: 0.75rem 0.5rem;
+        background-color: white;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-right: 2rem;
         position: relative;
+        font-size: 0.9rem;
+        white-space: nowrap;
     }
-    .phase-step.active {
-        background-color: #e3f2fd;
-        border-color: #2196F3;
-        font-weight: bold;
+    
+    .phase:last-child {
+        margin-right: 0;
     }
-    .phase-step.completed {
-        background-color: #e8f5e9;
-        border-color: #4caf50;
-    }
-    .phase-step:after {
+    
+    .phase::after {
         content: '';
         position: absolute;
         top: 50%;
-        right: -15px;
-        width: 0;
-        height: 0;
-        border-top: 8px solid transparent;
-        border-left: 8px solid #ccc;
-        border-bottom: 8px solid transparent;
-        transform: translateY(-50%);
+        right: -1.5rem;
+        width: 1rem;
+        height: 1rem;
+        border-top: 2px solid var(--border);
+        border-right: 2px solid var(--border);
+        transform: translateY(-50%) rotate(45deg);
     }
-    .phase-step:last-child:after {
+    
+    .phase:last-child::after {
         display: none;
+    }
+    
+    .phase.completed {
+        background-color: var(--secondary-light);
+        border-color: var(--secondary);
+        color: var(--secondary-dark);
+    }
+    
+    .phase.active {
+        background-color: var(--primary-light);
+        border-color: var(--primary);
+        color: var(--primary-dark);
+        font-weight: 600;
+    }
+    
+    @media (max-width: 768px) {
+        .features-list {
+            grid-template-columns: 1fr;
+        }
     }
 {% endblock %}
 
 {% block content %}
-    <div class="phase-overview">
-        <div class="phase-step completed">
-            Data Upload
+    <div class="pipeline-phases">
+        <div class="phase completed">
+            Загрузка Данных
         </div>
-        <div class="phase-step completed">
-            Configure Methods
+        <div class="phase completed">
+            Настройка Методов
         </div>
-        <div class="phase-step completed">
-            Manual Feature Selection
+        <div class="phase completed">
+            Ручной Выбор Признаков
         </div>
-        <div class="phase-step active">
-            View Results
+        <div class="phase active">
+            Просмотр Результатов
         </div>
     </div>
 
     <div class="section">
-        <h2>Pipeline Information</h2>
-        <p><strong>Dataset:</strong> {{ pipeline.dataset.name }}</p>
-        <p><strong>Filter Method:</strong> {{ pipeline.filter_method|title }}</p>
-        <p><strong>Wrapper Method:</strong> {{ pipeline.wrapper_method|title }}</p>
-        <p><strong>Model Method:</strong> {{ pipeline.model_method|title }}</p>
+        <h2>Информация о Пайплайне</h2>
+        <div class="pipeline-info">
+            <p><strong>Набор Данных:</strong> {{ pipeline.dataset.name }}</p>
+            <p><strong>Метод Фильтрации:</strong> {{ pipeline.filter_method }}</p>
+            <p><strong>Метод Обертки:</strong> {{ pipeline.wrapper_method }}</p>
+            <p><strong>Модель:</strong> {{ pipeline.model_method }}</p>
+        </div>
     </div>
 
     <div class="section">
-        <h2>Model Metrics</h2>
+        <h2>Метрики Модели</h2>
         <div class="metrics-grid">
             <div class="metric-card">
                 <div class="metric-label">ROC-AUC</div>
-                <div class="metric-value">{{ metrics.roc_auc|default:"-" }}</div>
+                <div class="metric-value">{{ metrics.roc_auc|floatformat:3|default:"-" }}</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">Accuracy</div>
-                <div class="metric-value">{{ metrics.accuracy|default:"-" }}</div>
+                <div class="metric-label">Точность</div>
+                <div class="metric-value">{{ metrics.accuracy|floatformat:3|default:"-" }}</div>
             </div>
             <div class="metric-card">
-                <div class="metric-label">F1 Score</div>
-                <div class="metric-value">{{ metrics.f1|default:"-" }}</div>
+                <div class="metric-label">F1-мера</div>
+                <div class="metric-value">{{ metrics.f1|floatformat:3|default:"-" }}</div>
             </div>
         </div>
     </div>
 
     <div class="section">
-        <h2>Features Analysis</h2>
+        <h2>Анализ Признаков</h2>
         <div class="features-container">
             <div class="features-section">
-                <h3>Initial Features</h3>
+                <h3>Начальные Признаки</h3>
+                <p class="text-muted">{{ user_selected_features|length }} признаков выбрано пользователем</p>
                 <ul class="features-list">
                     {% for feature in user_selected_features %}
                         <li class="feature-item">{{ feature }}</li>
                     {% empty %}
-                        <li>No initial features available</li>
+                        <li class="text-muted">Нет доступных начальных признаков</li>
                     {% endfor %}
                 </ul>
             </div>
             
             <div class="features-section">
-                <h3>Selected Features</h3>
+                <h3>Выбранные Признаки</h3>
+                <p class="text-muted">{{ selected_features|length }} признаков выбрано алгоритмом</p>
                 <ul class="features-list">
                     {% for feature in selected_features %}
                         <li class="feature-item">{{ feature }}</li>
                     {% empty %}
-                        <li>No selected features available</li>
+                        <li class="text-muted">Нет доступных выбранных признаков</li>
                     {% endfor %}
                 </ul>
             </div>
@@ -167,51 +219,35 @@
     </div>
 
     <div class="section">
-        <h2>SHAP Analysis</h2>
-        <h3>Global Importance</h3>
+        <h2>SHAP Анализ</h2>
+        <h3>Глобальная Важность</h3>
         <div class="plot-container">
             {% if shap_plots.global %}
-                <img src="{{ shap_plots.global }}" alt="Global SHAP Plot">
+                <img src="{{ shap_plots.global }}" alt="Глобальный SHAP График">
             {% else %}
-                <div class="plot-placeholder">Global SHAP plot will be displayed here</div>
+                <div class="plot-placeholder">Здесь будет отображен глобальный SHAP график</div>
             {% endif %}
         </div>
         
-        <h3>Distribution Importance</h3> 
+        <h3>Распределение Важности</h3> 
         <div class="plot-container">
             {% if shap_plots.distribution %}
-                <img src="{{ shap_plots.distribution }}" alt="Distribution SHAP Plot">
+                <img src="{{ shap_plots.distribution }}" alt="График Распределения SHAP">
             {% else %}
-                <div class="plot-placeholder">Distribution SHAP plot will be displayed here</div>
+                <div class="plot-placeholder">Здесь будет отображен график распределения SHAP</div>
             {% endif %} 
         </div>
     </div>
 
     <div class="button-group">
         <a href="{% url 'featurama:configure_pipeline' pipeline.id %}" class="button button-primary">
-            Edit Configuration
+            Редактировать Настройки
         </a>
         <a href="{% url 'featurama:manual_feature_selection' pipeline.id %}" class="button button-secondary">
-            Adjust Features
-        </a>
-        <a href="{% url 'featurama:pipelines' %}" class="button button-secondary">
-            Create New Pipeline
+            Настроить Признаки
         </a>
         <a href="{% url 'featurama:export_report' pipeline.id %}" class="button button-primary">
-            Export Report
+            Экспорт PDF Отчета
         </a>
     </div>
 {% endblock %}
-
-{% block scripts %}
-    <script>
-        function exportReport() {
-            // Placeholder for export functionality
-            alert('Export functionality will be implemented here');
-        }
-    </script>
-{% endblock %}
-
-{% block footer %}
-    <!-- Override default footer since we have our own navigation buttons -->
-{% endblock %} 

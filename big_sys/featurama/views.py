@@ -20,6 +20,8 @@ import pandas as pd
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 
 def pipelines(request: HttpRequest) -> HttpResponse:
@@ -161,7 +163,7 @@ def _handle_file_upload(
             'featurama/upload_data.html',
             {
                 'pipeline': pipeline,
-                'error': f"Error reading file: {str(e)}"
+                'error': f"Ошибка чтения файла: {str(e)}"
             }
         )
 
@@ -178,7 +180,7 @@ def _handle_target_selection(
             'featurama/upload_data.html',
             {
                 'pipeline': pipeline,
-                'error': "Please select a valid target variable."
+                'error': "Пожалуйста, выберите корректную целевую переменную."
             }
         )
     
@@ -190,7 +192,7 @@ def _handle_target_selection(
             'featurama/upload_data.html',
             {
                 'pipeline': pipeline,
-                'error': "Session expired. Please upload the file again."
+                'error': "Сессия истекла. Пожалуйста, загрузите файл снова."
             }
         )
     
@@ -236,7 +238,7 @@ def _handle_feature_selection(
             'featurama/upload_data.html', 
             {
                 'pipeline': pipeline,
-                'error': "Session expired. Please upload the file again."
+                'error': "Сессия истекла. Пожалуйста, загрузите файл снова."
             }
         )
     
@@ -256,7 +258,7 @@ def _handle_feature_selection(
                     target_variable=target_variable
                 ),
                 'step': 'feature_selection',
-                'error': "Please select at least one feature."
+                'error': "Пожалуйста, выберите хотя бы один признак."
             }
         )
     
@@ -318,14 +320,14 @@ def _handle_feature_selection(
         # Log the exact error for debugging
         import traceback
         error_details = traceback.format_exc()
-        print(f"Error processing file: {str(e)}\n{error_details}")
+        print(f"Ошибка обработки файла: {str(e)}\n{error_details}")
         
         return render(
             request, 
             'featurama/upload_data.html',
             {
                 'pipeline': pipeline,
-                'error': f"Error processing file: {str(e)}"
+                'error': f"Ошибка обработки файла: {str(e)}"
             }
         )
 
@@ -409,7 +411,7 @@ def manual_feature_selection(request: HttpRequest, pipeline_id: int) -> HttpResp
                     'filtered_features': filtered_features,
                     'wrapped_features': wrapped_features,
                     'selected_features': selected_features,
-                    'error': 'Please select at least one feature'
+                    'error': 'Пожалуйста, выберите хотя бы один признак'
                 }
             )
         
@@ -503,50 +505,66 @@ def export_report(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     # Create PDF document
     doc = SimpleDocTemplate(response, pagesize=letter)
     styles = getSampleStyleSheet()
+    
+    # Configure fonts for Cyrillic support
+    pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
+    
+    # Configure styles
+    styles['Title'].fontName = 'Arial'
+    styles['Heading1'].fontName = 'Arial'
+    styles['Heading2'].fontName = 'Arial'
+    styles['Normal'].fontName = 'Arial'
+    
+    # Set font size
+    styles['Title'].fontSize = 16
+    styles['Heading1'].fontSize = 14
+    styles['Heading2'].fontSize = 12
+    styles['Normal'].fontSize = 10
+    
     story = []
     
     # Add title
-    title = Paragraph(f"Pipeline #{pipeline_id} Report", styles['Title'])
+    title = Paragraph(f"Отчет по пайплайну #{pipeline_id}", styles['Title'])
     story.append(title)
     story.append(Spacer(1, 12))
     
     # Add pipeline info
-    story.append(Paragraph("Pipeline Information", styles['Heading1']))
+    story.append(Paragraph("Информация о пайплайне", styles['Heading1']))
     info = [
-        f"Dataset: {pipeline.dataset.name}",
-        f"Filter Method: {pipeline.filter_method}",
-        f"Wrapper Method: {pipeline.wrapper_method}",
-        f"Model Method: {pipeline.model_method}"
+        f"Набор данных: {pipeline.dataset.name}",
+        f"Метод фильтрации: {pipeline.filter_method}",
+        f"Метод обертки: {pipeline.wrapper_method}",
+        f"Метод модели: {pipeline.model_method}"
     ]
     for item in info:
         story.append(Paragraph(item, styles['Normal']))
     story.append(Spacer(1, 12))
     
     # Add metrics
-    story.append(Paragraph("Model Metrics", styles['Heading1']))
+    story.append(Paragraph("Метрики модели", styles['Heading1']))
     metrics = [
         f"ROC-AUC: {results['metrics']['roc_auc']}",
-        f"Accuracy: {results['metrics']['accuracy']}",
-        f"F1 Score: {results['metrics']['f1']}"
+        f"Точность: {results['metrics']['accuracy']}",
+        f"F1 оценка: {results['metrics']['f1']}"
     ]
     for item in metrics:
         story.append(Paragraph(item, styles['Normal']))
     story.append(Spacer(1, 12))
     
     # Add features
-    story.append(Paragraph("Selected Features", styles['Heading1']))
-    story.append(Paragraph("Initial Features:", styles['Heading2']))
+    story.append(Paragraph("Выбранные признаки", styles['Heading1']))
+    story.append(Paragraph("Начальные признаки:", styles['Heading2']))
     for feature in results['user_selected_features']:
         story.append(Paragraph(f"- {feature}", styles['Normal']))
     story.append(Spacer(1, 6))
     
-    story.append(Paragraph("Selected Features:", styles['Heading2']))
+    story.append(Paragraph("Выбранные признаки:", styles['Heading2']))
     for feature in results['selected_features']:
         story.append(Paragraph(f"- {feature}", styles['Normal']))
     story.append(Spacer(1, 12))
     
     # Add SHAP Analysis
-    story.append(Paragraph("SHAP Analysis", styles['Heading1']))
+    story.append(Paragraph("SHAP анализ", styles['Heading1']))
     
     # Get the latest SHAP explanation
     try:
@@ -556,7 +574,7 @@ def export_report(request: HttpRequest, pipeline_id: int) -> HttpResponse:
         
         if shap_explanation:
             # Add Global SHAP Plot
-            story.append(Paragraph("Global Feature Importance", styles['Heading2']))
+            story.append(Paragraph("Глобальная важность признаков", styles['Heading2']))
             if shap_explanation.global_explanation_image:
                 try:
                     img = Image(
@@ -567,18 +585,18 @@ def export_report(request: HttpRequest, pipeline_id: int) -> HttpResponse:
                     story.append(img)
                 except Exception as e:
                     story.append(Paragraph(
-                        f"Error loading global SHAP plot: {str(e)}",
+                        f"Ошибка загрузки глобального SHAP графика: {str(e)}",
                         styles['Normal']
                     ))
             else:
                 story.append(Paragraph(
-                    "No global SHAP plot available",
+                    "Нет доступного глобального SHAP графика",
                     styles['Normal']
                 ))
             story.append(Spacer(1, 12))
             
             # Add Distribution SHAP Plot 
-            story.append(Paragraph("Distribution Feature Importance", styles['Heading2']))
+            story.append(Paragraph("Распределение важности признаков", styles['Heading2']))
             if shap_explanation.distribution_explanation_image:
                 try:
                     img = Image(
@@ -589,22 +607,22 @@ def export_report(request: HttpRequest, pipeline_id: int) -> HttpResponse:
                     story.append(img)
                 except Exception as e:
                     story.append(Paragraph(
-                        f"Error loading distribution SHAP plot: {str(e)}",
+                        f"Ошибка загрузки графика распределения SHAP: {str(e)}",
                         styles['Normal']
                     ))
             else:
                 story.append(Paragraph(
-                    "No distribution SHAP plot available",
+                    "Нет доступного графика распределения SHAP",
                     styles['Normal']
                 ))
         else:
             story.append(Paragraph(
-                "No SHAP analysis available for this pipeline",
+                "Нет доступного SHAP анализа для этого пайплайна",
                 styles['Normal']
             ))
     except Exception as e:
         story.append(Paragraph(
-            f"Error accessing SHAP analysis: {str(e)}",
+            f"Ошибка доступа к SHAP анализу: {str(e)}",
             styles['Normal']
         ))
     

@@ -1,82 +1,443 @@
 {% extends "featurama/base.html" %}
 
-{% block title %}Upload Dataset - Pipeline {{ pipeline.id }}{% endblock %}
+{% block title %}Загрузка Набора Данных - Пайплайн {{ pipeline.id }}{% endblock %}
 
-{% block header %}Upload Dataset - Pipeline #{{ pipeline.id }}{% endblock %}
+{% block header %}Загрузка Набора Данных - Пайплайн #{{ pipeline.id }}{% endblock %}
+
+{% block nav_pipelines %}active{% endblock %}
+
+{% block additional_styles %}
+    /* Индикатор шагов */
+    .pipeline-phases {
+        display: flex;
+        align-items: center;
+        margin-bottom: calc(var(--spacing) * 2);
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
+    }
+    
+    .phase {
+        flex: 1;
+        min-width: 130px;
+        text-align: center;
+        padding: 0.75rem 0.5rem;
+        background-color: white;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-right: 2rem;
+        position: relative;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+    
+    .phase:last-child {
+        margin-right: 0;
+    }
+    
+    .phase::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -1.5rem;
+        width: 1rem;
+        height: 1rem;
+        border-top: 2px solid var(--border);
+        border-right: 2px solid var(--border);
+        transform: translateY(-50%) rotate(45deg);
+    }
+    
+    .phase:last-child::after {
+        display: none;
+    }
+    
+    .phase.active {
+        background-color: var(--primary-light);
+        border-color: var(--primary);
+        color: var(--primary-dark);
+        font-weight: 600;
+    }
+    
+    .phase.completed {
+        background-color: var(--secondary-light);
+        border-color: var(--secondary);
+        color: var(--secondary-dark);
+    }
+    
+    /* Секция ошибок */
+    .error-section {
+        background-color: #ffebee;
+        border: 1px solid #ffcdd2;
+        border-radius: var(--radius);
+        padding: var(--spacing);
+        margin-bottom: var(--spacing);
+        color: var(--error);
+    }
+    
+    /* Загрузка файла */
+    .file-upload-container {
+        margin: calc(var(--spacing) * 1.5) 0;
+    }
+    
+    .file-upload-label {
+        display: block;
+        border: 2px dashed var(--border);
+        border-radius: var(--radius);
+        padding: calc(var(--spacing) * 2);
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .file-upload-label:hover {
+        border-color: var(--primary);
+        background-color: var(--primary-light);
+    }
+    
+    .file-input {
+        display: none;
+    }
+    
+    .file-upload-icon {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .file-icon {
+        font-size: 2.5rem;
+        margin-bottom: var(--spacing);
+        color: var(--primary);
+    }
+    
+    .upload-text {
+        font-size: 1.1rem;
+        color: var(--text-light);
+    }
+    
+    .file-preview {
+        margin-top: var(--spacing);
+        padding: var(--spacing);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background-color: white;
+        display: none;
+    }
+    
+    .file-preview.active {
+        display: block;
+    }
+    
+    /* Выбор целевой переменной */
+    .binary-option {
+        font-weight: 600;
+        color: var(--primary);
+    }
+    
+    .binary-variables-suggestion {
+        margin-top: 1.5rem;
+        padding: var(--spacing);
+        background-color: var(--primary-light);
+        border-radius: var(--radius);
+        border-left: 4px solid var(--primary);
+    }
+    
+    .binary-variables-suggestion h4 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+        color: var(--primary-dark);
+        font-size: 1rem;
+    }
+    
+    .binary-vars-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .binary-var-item {
+        padding: 0.5rem 0.75rem;
+        background-color: white;
+        border: 1px solid var(--primary);
+        border-radius: var(--radius);
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.9rem;
+    }
+    
+    .binary-var-item:hover, .binary-var-item.selected {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    /* Шаг выбора признаков */
+    .feature-selection-container {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: var(--spacing);
+        margin: var(--spacing) 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: var(--spacing);
+        background-color: white;
+    }
+    
+    @media (max-width: 768px) {
+        .feature-selection-container {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .feature-list-container {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .feature-list-container h3 {
+        background-color: var(--primary-light);
+        margin: 0;
+        padding: 0.75rem var(--spacing);
+        font-size: 1rem;
+        border-bottom: 1px solid var(--border);
+        color: var(--primary-dark);
+    }
+    
+    .selection-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem var(--spacing);
+        border-bottom: 1px solid var(--border);
+        background-color: #f8f9fa;
+    }
+    
+    .select-all-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+        font-size: 0.9rem;
+        padding: 0.25rem 0;
+    }
+    
+    .feature-checkbox-label {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        cursor: pointer;
+        width: 100%;
+        border-radius: var(--radius);
+        transition: background-color 0.2s;
+        position: relative;
+    }
+                     
+    .feature-checkbox-label:hover {
+        background-color: var(--primary-light);
+    }
+    
+    /* Стилизация чекбоксов */
+    .available-feature-checkbox, 
+    .selected-feature-checkbox,
+    .select-all {
+        opacity: 0; /* Скрыть стандартный чекбокс */
+        position: absolute;
+        cursor: pointer;
+        height: 0;
+        width: 0;
+    }
+    
+    .checkmark {
+        position: relative;
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        margin-right: 0.75rem;
+        background-color: #fff;
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        flex-shrink: 0;
+    }
+    
+    .available-feature-checkbox:checked ~ .checkmark,
+    .selected-feature-checkbox:checked ~ .checkmark,
+    .select-all:checked ~ .checkmark {
+        background-color: var(--primary);
+        border-color: var(--primary);
+    }
+    
+    .checkmark:after {
+        content: "";
+        position: absolute;
+        display: none;
+        left: 6px;
+        top: 2px;
+        width: 4px;
+        height: 9px;
+        border: solid white;
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+    }
+    
+    .available-feature-checkbox:checked ~ .checkmark:after,
+    .selected-feature-checkbox:checked ~ .checkmark:after,
+    .select-all:checked ~ .checkmark:after {
+        display: block;
+    }
+    
+    .feature-item {
+        margin-bottom: 0.25rem;
+        border-radius: var(--radius);
+    }
+                     
+    .feature-label {
+        flex: 1;
+    }
+                     
+    .feature-list {
+        height: 300px;
+        overflow-y: auto;
+        padding: 0.75rem;
+    }
+    
+    .feature-item.filtered {
+        display: none;
+    }
+    
+    .validation-message {
+        color: var(--error);
+        margin-top: var(--spacing);
+        padding: 0.5rem;
+    }
+    
+    .transfer-buttons {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: var(--spacing);
+    }
+    
+    .transfer-button {
+        padding: 0.5rem;
+        background-color: white;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        font-size: 1.2rem;
+        cursor: pointer;
+        width: 40px;
+        height: 40px;
+        text-align: center;
+        transition: all 0.2s;
+    }
+    
+    .transfer-button:hover {
+        background-color: var(--primary-light);
+        border-color: var(--primary);
+    }
+    
+    .transfer-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    @media (max-width: 768px) {
+        .transfer-buttons {
+            flex-direction: row;
+            justify-content: center;
+            margin: var(--spacing) 0;
+        }
+    }
+    
+    /* Общие стили */
+    .description {
+        color: var(--text-light);
+        margin-bottom: var(--spacing);
+        font-size: 0.95rem;
+    }
+    
+    .input-help {
+        font-size: 0.8rem;
+        color: var(--text-light);
+        margin-top: 0.25rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+{% endblock %}
 
 {% block content %}
     {% if error %}
-        <div class="section error-section">
-            <p style="color: red;">{{ error }}</p>
+        <div class="error-section">
+            <p>{{ error }}</p>
         </div>
     {% endif %}
     
-    <!-- Step indicator -->
-    <div class="step-indicator">
-        <div class="step {% if not step %}active{% endif %}">
-            <span class="step-number">1</span>
-            <span class="step-label">Upload File</span>
+    <!-- Индикатор шагов -->
+    <div class="pipeline-phases">
+        <div class="phase {% if not step %}active{% else %}completed{% endif %}">
+            Загрузка Файла
         </div>
-        <div class="step-divider"></div>
-        <div class="step {% if step == 'target_selection' %}active{% endif %}">
-            <span class="step-number">2</span>
-            <span class="step-label">Select Target</span>
+        <div class="phase {% if step == 'target_selection' %}active{% elif step == 'feature_selection' %}completed{% endif %}">
+            Выбор Цели
         </div>
-        <div class="step-divider"></div>
-        <div class="step {% if step == 'feature_selection' %}active{% endif %}">
-            <span class="step-number">3</span>
-            <span class="step-label">Select Features</span>
+        <div class="phase {% if step == 'feature_selection' %}active{% endif %}">
+            Выбор Признаков
+        </div>
+        <div class="phase">
+            Настройка Методов
         </div>
     </div>
     
     <form method="post" enctype="multipart/form-data" id="dataUploadForm">
         {% csrf_token %}
         
-        <!-- Step 1: File Upload -->
+        <!-- Шаг 1: Загрузка файла -->
         {% if not step %}
             <div class="section">
-                <h2>Upload Dataset File</h2>
+                <h2>Загрузка Набора Данных</h2>
+                <p class="description">
+                    Загрузите CSV или Excel файл с вашим набором данных.
+                    Убедитесь, что данные правильно отформатированы с заголовками.
+                </p>
                 <div class="file-upload-container">
                     <label for="dataset_file" class="file-upload-label">
                         <div class="file-upload-icon">
                             <span class="file-icon">📁</span>
-                            <span class="upload-text">Choose a file or drag it here</span>
+                            <span class="upload-text">Выберите файл или перетащите его сюда</span>
                         </div>
                         <input type="file" id="dataset_file" name="dataset_file" accept=".csv,.xlsx,.xls" required class="file-input">
                     </label>
                     <div id="file-preview" class="file-preview"></div>
                 </div>
-                <p class="description">
-                    Upload a CSV or Excel file containing your dataset.
-                    <br>Make sure your data is properly formatted with headers.
-                </p>
                 <div class="button-group">
-                    <button type="submit" class="button button-primary" id="uploadButton" disabled>Upload Dataset</button>
-                    <a href="{% url 'featurama:pipelines' %}" class="button button-secondary">Cancel</a>
+                    <button type="submit" class="button button-primary" id="uploadButton" disabled>Загрузить Набор Данных</button>
+                    <a href="{% url 'featurama:pipelines' %}" class="button button-outline">Отмена</a>
                 </div>
             </div>
         
-        <!-- Step 2: Target Variable Selection -->
+        <!-- Шаг 2: Выбор целевой переменной -->
         {% elif step == 'target_selection' %}
             <div class="section">
-                <h2>Dataset: {{ dataset_name }}</h2>
+                <h2>Набор Данных: {{ dataset_name }}</h2>
                 <div class="form-group">
-                    <label for="target_variable">Select Target Variable:</label>
+                    <label for="target_variable">Выберите Целевую Переменную:</label>
                     <select id="target_variable" name="target_variable" required>
-                        <option value="">Select a target variable</option>
+                        <option value="">Выберите целевую переменную</option>
                         {% for feature in features %}
                         <option value="{{ feature }}" 
                             {% if feature in binary_variables %}class="binary-option"{% endif %}
                             {% if binary_variables and feature == binary_variables.0 %}selected{% endif %}>
-                            {{ feature }}{% if feature in binary_variables %} (binary){% endif %}
+                            {{ feature }}{% if feature in binary_variables %} (бинарная){% endif %}
                         </option>
                         {% endfor %}
                     </select>
-                    <p class="input-help">Select the binary classification target variable (0/1)</p>
+                    <p class="input-help">Выберите бинарную целевую переменную (0/1)</p>
                     
                     {% if binary_variables %}
                     <div class="binary-variables-suggestion">
-                        <h4>Suggested Binary Variables:</h4>
+                        <h4>Предлагаемые Бинарные Переменные:</h4>
                         <div class="binary-vars-list">
                             {% for var in binary_variables %}
                             <div class="binary-var-item" data-value="{{ var }}">{{ var }}</div>
@@ -86,45 +447,45 @@
                     {% endif %}
                 </div>
                 <div class="button-group">
-                    <button type="submit" class="button button-primary">Continue to Feature Selection</button>
-                    <!-- Back button with hidden field to go back to file upload -->
-                    <button type="submit" name="go_back" value="upload" class="button button-secondary">Back to File Upload</button>
+                    <button type="submit" class="button button-primary">Продолжить к Выбору Признаков</button>
+                    <!-- Кнопка назад со скрытым полем для возврата к загрузке файла -->
+                    <button type="submit" name="go_back" value="upload" class="button button-outline">Назад к Загрузке Файла</button>
                 </div>
             </div>
-        <!-- Step 3: Feature Selection -->
+        <!-- Шаг 3: Выбор признаков -->
         {% elif step == 'feature_selection' %}
             <div class="section">
-                <h2>Feature Selection</h2>
-                <p>Target Variable: <strong>{{ target_variable }}</strong></p>
+                <h2>Выбор Признаков</h2>
+                <p><strong>Целевая Переменная:</strong> {{ target_variable }}</p>
                 <p class="description">
-                    Select which features you want to include in the analysis. 
-                    Features not selected will be ignored during processing.
+                    Выберите признаки, которые вы хотите включить в анализ. 
+                    Признаки, не выбранные здесь, будут игнорироваться при обработке.
                 </p>
                 
-                <div class="feature-selection-controls">
-                    <div class="search-container">
-                        <input type="text" id="feature-search" placeholder="Search features..." class="search-input">
-                    </div>
+                <div class="search-container">
+                    <input type="text" id="feature-search" placeholder="Поиск признаков..." class="search-input">
                 </div>
                 
                 <div class="feature-selection-container">
                     <div class="feature-list-container">
-                        <h3>Available Features</h3>
+                        <h3>Доступные Признаки</h3>
                         <div class="selection-header">
-                            <label class="select-all-container">
+                            <label class="select-all-container feature-checkbox-label">
                                 <input type="checkbox" id="select-all-available" class="select-all">
-                                <span>Select All</span>
+                                <span class="checkmark"></span>
+                                <span>Выбрать Все</span>
                             </label>
-                            <span class="feature-count" id="available-count">0 features</span>
+                            <span class="feature-count" id="available-count">0 признаков</span>
                         </div>
                         <div class="feature-list" id="available-features-list">
                             {% for choice in feature_form.selected_features.field.choices %}
                             <div class="feature-item" data-feature-name="{{ choice.1 }}">
-                                <label>
+                                <label class="feature-checkbox-label">
                                     <input type="checkbox" 
                                            name="available_feature" 
                                            value="{{ choice.0 }}" 
                                            class="available-feature-checkbox">
+                                    <span class="checkmark"></span>
                                     <span class="feature-label">{{ choice.1 }}</span>
                                 </label>
                             </div>
@@ -133,294 +494,41 @@
                     </div>
                     
                     <div class="transfer-buttons">
-                        <button type="button" id="move-to-selected" class="transfer-button" title="Add selected features">→</button>
-                        <button type="button" id="move-all-to-selected" class="transfer-button" title="Add all features">»</button>
-                        <button type="button" id="move-all-to-available" class="transfer-button" title="Remove all features">«</button>
-                        <button type="button" id="move-to-available" class="transfer-button" title="Remove selected features">←</button>
+                        <button type="button" id="move-to-selected" class="transfer-button" title="Добавить выбранные признаки">→</button>
+                        <button type="button" id="move-all-to-selected" class="transfer-button" title="Добавить все признаки">»</button>
+                        <button type="button" id="move-all-to-available" class="transfer-button" title="Удалить все признаки">«</button>
+                        <button type="button" id="move-to-available" class="transfer-button" title="Удалить выбранные признаки">←</button>
                     </div>
                     
                     <div class="feature-list-container">
-                        <h3>Selected Features</h3>
+                        <h3>Выбранные Признаки</h3>
                         <div class="selection-header">
-                            <label class="select-all-container">
+                            <label class="select-all-container feature-checkbox-label">
                                 <input type="checkbox" id="select-all-selected" class="select-all">
-                                <span>Select All</span>
+                                <span class="checkmark"></span>
+                                <span>Выбрать Все</span>
                             </label>
-                            <span class="feature-count" id="selected-count">0 features</span>
+                            <span class="feature-count" id="selected-count">0 признаков</span>
                         </div>
                         <div class="feature-list" id="selected-features-list">
-                            <!-- Selected features will appear here -->
+                            <!-- Выбранные признаки будут отображаться здесь -->
                         </div>
                     </div>
                 </div>
                 
-                <!-- Hidden input to store selected features -->
+                <!-- Скрытое поле для хранения выбранных признаков -->
                 <div id="selected-features-container"></div>
                 
-                <div class="validation-message" id="validation-message"></div>
+                <div id="validation-message" class="validation-message"></div>
                 
                 <div class="button-group">
-                    <button type="submit" class="button button-primary" id="complete-button">Complete Upload</button>
-                    <!-- Back button with hidden field to go back to target selection -->
-                    <button type="submit" name="go_back" value="target" class="button button-secondary">Back to Target Selection</button>
+                    <button type="submit" class="button button-primary" id="complete-button">Завершить Загрузку</button>
+                    <!-- Кнопка назад со скрытым полем для возврата к выбору цели -->
+                    <button type="submit" name="go_back" value="target" class="button button-outline">Назад к Выбору Цели</button>
                 </div>
             </div>
         {% endif %}
     </form>
-{% endblock %}
-
-{% block additional_styles %}
-    select {
-        width: 100%;
-        padding: 0.5rem;
-        margin: 0.5rem 0 1rem 0;
-    }
-    .description {
-        font-size: 0.9em;
-        color: #666;
-        margin: 1rem 0;
-    }
-    .error-section {
-        background-color: #ffebee;
-        border-color: #ffcdd2;
-        padding: 1rem;
-        border-radius: 4px;
-        margin-bottom: 1rem;
-    }
-    /* Step indicator */
-    .step-indicator {
-        display: flex;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-    .step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 100px;
-    }
-    .step-number {
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        background-color: #e0e0e0;
-        color: #757575;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 0.5rem;
-        font-weight: bold;
-    }
-    .step.active .step-number {
-        background-color: #2196F3;
-        color: white;
-    }
-    .step-divider {
-        flex: 1;
-        height: 2px;
-        background-color: #e0e0e0;
-        margin: 0 0.5rem;
-    }
-    .step-label {
-        font-size: 0.8rem;
-        color: #757575;
-    }
-    .step.active .step-label {
-        color: #2196F3;
-        font-weight: bold;
-    }
-    /* Binary variable suggestions */
-    .binary-option {
-        font-weight: bold;
-        color: #2196F3;
-    }
-    .binary-variables-suggestion {
-        margin-top: 1.5rem;
-        padding: 1rem;
-        background-color: #e3f2fd;
-        border-radius: 4px;
-        border-left: 4px solid #2196F3;
-    }
-    .binary-variables-suggestion h4 {
-        margin-top: 0;
-        margin-bottom: 0.5rem;
-        color: #0d47a1;
-        font-size: 1rem;
-    }
-    .binary-vars-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    .binary-var-item {
-        padding: 0.5rem 0.75rem;
-        background-color: #bbdefb;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: all 0.2s;
-        font-size: 0.9rem;
-    }
-    .binary-var-item:hover {
-        background-color: #90caf9;
-    }
-    /* File upload styling */
-    .file-upload-container {
-        margin: 1.5rem 0;
-    }
-    .file-upload-label {
-        display: block;
-        border: 2px dashed #ccc;
-        border-radius: 5px;
-        padding: 2rem;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-    .file-upload-label:hover {
-        border-color: #2196F3;
-    }
-    .file-input {
-        display: none;
-    }
-    .file-upload-icon {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-    .file-icon {
-        font-size: 2.5rem;
-        margin-bottom: 1rem;
-    }
-    .upload-text {
-        font-size: 1.1rem;
-        color: #666;
-    }
-    .file-preview {
-        margin-top: 1rem;
-        padding: 1rem;
-        border: 1px solid #eee;
-        border-radius: 4px;
-        background-color: #f9f9f9;
-        display: none;
-    }
-    .file-preview.active {
-        display: block;
-    }
-    /* Feature selection styling */
-    .feature-selection-controls {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 1rem;
-    }
-    .search-container {
-        width: 100%;
-    }
-    .search-input {
-        width: 100%;
-        padding: 0.5rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-    }
-    .feature-selection-container {
-        display: flex;
-        justify-content: space-between;
-        margin: 1rem 0;
-    }
-    .feature-list-container {
-        width: 45%;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-    }
-    .feature-list-container h3 {
-        background-color: #f5f5f5;
-        margin: 0;
-        padding: 0.5rem;
-        font-size: 1rem;
-        border-bottom: 1px solid #ddd;
-    }
-    .selection-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem;
-        border-bottom: 1px solid #eee;
-    }
-    .feature-count {
-        font-size: 0.8rem;
-        color: #666;
-    }
-    .feature-list {
-        height: 300px;
-        overflow-y: auto;
-        padding: 0.5rem;
-    }
-    .feature-item {
-        padding: 0.25rem 0;
-    }
-    .feature-item.filtered {
-        display: none;
-    }
-    .feature-item:hover {
-        background-color: #f5f5f5;
-    }
-    .transfer-buttons {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap: 1rem;
-        padding: 0 1rem;
-    }
-    .transfer-button {
-        padding: 0.5rem;
-        background-color: #f5f5f5;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 1.2rem;
-        cursor: pointer;
-        width: 40px;
-        text-align: center;
-    }
-    .transfer-button:hover {
-        background-color: #e0e0e0;
-    }
-    .transfer-button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-    .select-all-container {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: bold;
-    }
-    .button-group {
-        margin-top: 1.5rem;
-        display: flex;
-        gap: 1rem;
-    }
-    .button-primary {
-        background-color: #2196F3;
-        color: white;
-        border: none;
-    }
-    .button-secondary {
-        background-color: #f5f5f5;
-        color: #333;
-        border: 1px solid #ddd;
-    }
-    .validation-message {
-        margin-top: 1rem;
-        color: #d32f2f;
-        font-size: 0.9rem;
-    }
-    .input-help {
-        font-size: 0.8rem;
-        color: #666;
-        margin-top: 0.25rem;
-    }
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
 {% endblock %}
 
 {% block scripts %}
@@ -433,35 +541,35 @@
             const uploadForm = document.getElementById('dataUploadForm');
             const maxFileSize = 10 * 1024 * 1024; // 10MB
             
-            // Handle file selection
+            // Обработка выбора файла
             fileInput.addEventListener('change', function() {
                 if (this.files && this.files[0]) {
                     const file = this.files[0];
                     
-                    // Check file size
+                    // Проверка размера файла
                     if (file.size > maxFileSize) {
-                        filePreview.innerHTML = `<div style="color: red;">File is too large (max 10MB)</div>`;
+                        filePreview.innerHTML = `<div style="color: var(--error);">Файл слишком большой (макс. 10MB)</div>`;
                         filePreview.classList.add('active');
                         uploadButton.disabled = true;
                         return;
                     }
                     
-                    // Check file type
+                    // Проверка типа файла
                     const fileExtension = file.name.split('.').pop().toLowerCase();
                     if (!['csv', 'xlsx', 'xls'].includes(fileExtension)) {
-                        filePreview.innerHTML = `<div style="color: red;">Invalid file type (only .csv, .xlsx, .xls allowed)</div>`;
+                        filePreview.innerHTML = `<div style="color: var(--error);">Недопустимый тип файла (только .csv, .xlsx, .xls)</div>`;
                         filePreview.classList.add('active');
                         uploadButton.disabled = true;
                         return;
                     }
                     
-                    // Show file details
+                    // Показать детали файла
                     const fileSize = (file.size / 1024).toFixed(2) + ' KB';
                     filePreview.innerHTML = `
                         <div>
-                            <strong>File:</strong> ${file.name}<br>
-                            <strong>Type:</strong> ${file.type || fileExtension.toUpperCase()}<br>
-                            <strong>Size:</strong> ${fileSize}
+                            <strong>Файл:</strong> ${file.name}<br>
+                            <strong>Тип:</strong> ${file.type || fileExtension.toUpperCase()}<br>
+                            <strong>Размер:</strong> ${fileSize}
                         </div>
                     `;
                     filePreview.classList.add('active');
@@ -472,7 +580,7 @@
                 }
             });
             
-            // Handle drag and drop
+            // Обработка drag and drop
             const dropArea = document.querySelector('.file-upload-label');
             
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -493,12 +601,12 @@
             });
             
             function highlight() {
-                dropArea.style.borderColor = '#2196F3';
-                dropArea.style.backgroundColor = '#e3f2fd';
+                dropArea.style.borderColor = 'var(--primary)';
+                dropArea.style.backgroundColor = 'var(--primary-light)';
             }
             
             function unhighlight() {
-                dropArea.style.borderColor = '#ccc';
+                dropArea.style.borderColor = 'var(--border)';
                 dropArea.style.backgroundColor = '';
             }
             
@@ -510,7 +618,7 @@
                 
                 if (files && files.length > 0) {
                     fileInput.files = files;
-                    // Trigger change event
+                    // Триггер события change
                     const event = new Event('change');
                     fileInput.dispatchEvent(event);
                 }
@@ -525,31 +633,25 @@
             const targetSelect = document.getElementById('target_variable');
             const binaryItems = document.querySelectorAll('.binary-var-item');
             
-            // Make binary variable chips clickable
+            // Сделать бинарные переменные кликабельными
             binaryItems.forEach(function(item) {
                 item.addEventListener('click', function() {
                     const value = this.dataset.value;
                     targetSelect.value = value;
                     
-                    // Highlight the selected item
+                    // Выделить выбранный элемент
                     binaryItems.forEach(i => i.classList.remove('selected'));
                     this.classList.add('selected');
                 });
             });
         });
     </script>
-    <style>
-        .binary-var-item.selected {
-            background-color: #64b5f6;
-            font-weight: bold;
-        }
-    </style>
     {% endif %}
     
     {% if step == 'feature_selection' %}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Feature selection elements
+            // Элементы выбора признаков
             const availableList = document.getElementById('available-features-list');
             const selectedList = document.getElementById('selected-features-list');
             const searchInput = document.getElementById('feature-search');
@@ -558,7 +660,7 @@
             const availableCountEl = document.getElementById('available-count');
             const selectedCountEl = document.getElementById('selected-count');
             
-            // Feature data from server
+            // Данные признаков с сервера
             let featureData = [];
             {% for choice in feature_form.selected_features.field.choices %}
             featureData.push({
@@ -567,36 +669,41 @@
             });
             {% endfor %}
             
-            // Helper to create a feature checkbox item
+            // Вспомогательная функция для создания элемента чекбокса признака
             function createFeatureItem(value, label) {
                 const div = document.createElement('div');
                 div.className = 'feature-item';
                 div.dataset.featureName = label;
                 
                 const labelEl = document.createElement('label');
+                labelEl.className = 'feature-checkbox-label';
                 
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.className = 'selected-feature-checkbox';
                 checkbox.value = value;
                 
+                const checkmark = document.createElement('span');
+                checkmark.className = 'checkmark';
+                
                 const span = document.createElement('span');
                 span.className = 'feature-label';
                 span.textContent = label;
                 
                 labelEl.appendChild(checkbox);
+                labelEl.appendChild(checkmark);
                 labelEl.appendChild(span);
                 
                 div.appendChild(labelEl);
                 return div;
             }
             
-            // Update hidden inputs for selected features
+            // Обновление скрытых полей для выбранных признаков
             function updateSelectedFeatures() {
                 const container = document.getElementById('selected-features-container');
-                container.innerHTML = ''; // Clear existing
+                container.innerHTML = ''; // Очистить существующие
                 
-                // Get all selected features
+                // Получить все выбранные признаки
                 const items = selectedList.querySelectorAll('.feature-item');
                 
                 items.forEach(function(item) {
@@ -608,7 +715,7 @@
                     container.appendChild(input);
                 });
                 
-                // Update counts correctly 
+                // Правильное обновление счетчиков
                 const availableItems = availableList.querySelectorAll('.feature-item');
                 let visibleAvailableCount = 0;
                 
@@ -619,19 +726,19 @@
                 });
                 
                 const selectedCount = selectedList.querySelectorAll('.feature-item').length;
-                availableCountEl.textContent = `${visibleAvailableCount} feature${visibleAvailableCount !== 1 ? 's' : ''}`;
-                selectedCountEl.textContent = `${selectedCount} feature${selectedCount !== 1 ? 's' : ''}`;
+                availableCountEl.textContent = `${visibleAvailableCount} признак${visibleAvailableCount !== 1 ? 'ов' : ''}`;
+                selectedCountEl.textContent = `${selectedCount} признак${selectedCount !== 1 ? 'ов' : ''}`;
                 
-                // Validate selection
+                // Валидация выбора
                 validateSelection();
             }
             
-            // Validate that we have selected at least some features
+            // Проверка, что выбрано хотя бы несколько признаков
             function validateSelection() {
                 const items = selectedList.querySelectorAll('.feature-item');
                 
                 if (items.length === 0) {
-                    validationMessage.textContent = 'Please select at least one feature';
+                    validationMessage.textContent = 'Пожалуйста, выберите хотя бы один признак';
                     completeButton.disabled = true;
                 } else {
                     validationMessage.textContent = '';
@@ -639,7 +746,7 @@
                 }
             }
             
-            // Filter available features based on search
+            // Фильтрация доступных признаков по поиску
             function filterFeatures() {
                 const query = searchInput.value.toLowerCase();
                 const items = availableList.querySelectorAll('.feature-item');
@@ -656,15 +763,15 @@
                 updateSelectedFeatures();
             }
             
-            // Search functionality
+            // Функциональность поиска
             searchInput.addEventListener('input', filterFeatures);
             
-            // Move features between lists
+            // Перемещение признаков между списками
             document.getElementById('move-to-selected').addEventListener('click', function() {
                 const availableCheckboxes = document.querySelectorAll('.available-feature-checkbox:checked');
                 
                 if (availableCheckboxes.length === 0) {
-                    alert('Please select at least one feature to move');
+                    alert('Пожалуйста, выберите хотя бы один признак для перемещения');
                     return;
                 }
                 
@@ -673,10 +780,10 @@
                     const value = checkbox.value;
                     const label = item.dataset.featureName;
                     
-                    // Create new item in selected list
+                    // Создать новый элемент в списке выбранных
                     selectedList.appendChild(createFeatureItem(value, label));
                     
-                    // Hide the item in available list
+                    // Скрыть элемент в списке доступных
                     item.style.display = 'none';
                     checkbox.checked = false;
                 });
@@ -688,7 +795,7 @@
                 const selectedCheckboxes = document.querySelectorAll('.selected-feature-checkbox:checked');
                 
                 if (selectedCheckboxes.length === 0) {
-                    alert('Please select at least one feature to remove');
+                    alert('Пожалуйста, выберите хотя бы один признак для удаления');
                     return;
                 }
                 
@@ -697,20 +804,20 @@
                     const value = checkbox.value;
                     const label = item.dataset.featureName;
                     
-                    // Show the item in available list
+                    // Показать элемент в списке доступных
                     const availableItem = availableList.querySelector(`.feature-item[data-feature-name="${label}"]`);
                     if (availableItem) {
                         availableItem.style.display = '';
                     }
                     
-                    // Remove from selected list
+                    // Удалить из списка выбранных
                     item.remove();
                 });
                 
                 updateSelectedFeatures();
             });
             
-            // Move all features
+            // Перемещение всех признаков
             document.getElementById('move-all-to-selected').addEventListener('click', function() {
                 const availableItems = availableList.querySelectorAll('.feature-item:not(.filtered)');
                 
@@ -719,10 +826,10 @@
                     const value = checkbox.value;
                     const label = item.dataset.featureName;
                     
-                    // Create new item in selected list
+                    // Создать новый элемент в списке выбранных
                     selectedList.appendChild(createFeatureItem(value, label));
                     
-                    // Hide the item in available list
+                    // Скрыть элемент в списке доступных
                     item.style.display = 'none';
                 });
                 
@@ -737,20 +844,20 @@
                     const value = checkbox.value;
                     const label = item.dataset.featureName;
                     
-                    // Show the item in available list
+                    // Показать элемент в списке доступных
                     const availableItem = availableList.querySelector(`.feature-item[data-feature-name="${label}"]`);
                     if (availableItem) {
                         availableItem.style.display = '';
                     }
                     
-                    // Remove from selected list
+                    // Удалить из списка выбранных
                     item.remove();
                 });
                 
                 updateSelectedFeatures();
             });
             
-            // Select all checkboxes
+            // Выбор всех чекбоксов
             document.getElementById('select-all-available').addEventListener('change', function() {
                 const checkboxes = availableList.querySelectorAll('.feature-item:not(.filtered) input[type="checkbox"]');
                 checkboxes.forEach(function(checkbox) {
@@ -765,10 +872,10 @@
                 }, this);
             });
             
-            // Initialize the feature counts
+            // Инициализация счетчиков признаков
             updateSelectedFeatures();
             
-            // Auto-select all available features initially
+            // Автоматически выбрать все доступные признаки изначально
             document.getElementById('move-all-to-selected').click();
         });
     </script>

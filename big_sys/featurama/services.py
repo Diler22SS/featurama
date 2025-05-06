@@ -19,24 +19,24 @@ class MethodsService:
     def get_available_methods() -> Dict[str, Dict[str, str]]:
         """Get all available pipeline methods with descriptions."""
         filter_methods = {
-            'variance_threshold': 'Variance Threshold – removes low-variance features',
-            'anova': 'ANOVA – selects features based on F-value',
-            'mutual_info': 'Mutual Information – selects features based on mutual info',
-            'mrmr': 'MRMR – Minimum Redundancy Maximum Relevance'
+            'Variance Threshold': 'Variance Threshold – удаляет признаки с низкой дисперсией',
+            'ANOVA': 'ANOVA – выбирает признаки на основе F-значения',
+            'Mutual Information': 'Mutual Information – выбирает признаки на основе взаимной информации',
+            'MRMR': 'MRMR – Minimum Redundancy Maximum Relevance'
         }
         
         wrapper_methods = {
-            'rfe_logreg': 'Recursive Feature Elimination with Logistic Regression',
-            'rfe_tree': 'Recursive Feature Elimination with Decision Tree',
-            'sfs_logreg': 'Sequential Feature Selection with Logistic Regression',
-            'sfs_tree': 'Sequential Feature Selection with Decision Tree'
+            'RFE with Logistic Regression': 'Recursive Feature Elimination с логистической регрессией',
+            'RFE with Decision Tree': 'Recursive Feature Elimination с деревом решений',
+            'SFS with Logistic Regression': 'Sequential Feature Selection с логистической регрессией',
+            'SFS with Decision Tree': 'Sequential Feature Selection с деревом решений'
         }
         
         model_methods = {
-            'logreg': 'Logistic Regression – linear model for classification',
-            'xgb_linear': 'XGBoost – gradient boosting with linear booster',
-            'dtree': 'Decision Tree – simple decision tree model',
-            'xgb_tree': 'XGBoost – gradient boosting with tree booster'
+            'Logistic Regression': 'Logistic Regression – линейная модель для классификации',
+            'XGBoost Linear': 'XGBoost – градиентный бустинг с линейным бустером',
+            'Decision Tree': 'Decision Tree – простая модель дерева решений',
+            'XGBoost Tree': 'XGBoost – градиентный бустинг с деревом решений'
         }
         
         return {

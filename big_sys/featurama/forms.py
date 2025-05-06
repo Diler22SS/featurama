@@ -28,14 +28,14 @@ class DatasetUploadForm(forms.Form):
         extension = file.name.split('.')[-1].lower()
         if extension not in self.ALLOWED_EXTENSIONS:
             raise forms.ValidationError(
-                f"Unsupported file format. Please upload one of: "
+                f"Неподдерживаемый формат файла. Пожалуйста, загрузите один из: "
                 f"{', '.join(self.ALLOWED_EXTENSIONS)}."
             )
             
         # Check file size (10MB max)
         if file.size > 10 * 1024 * 1024:
             raise forms.ValidationError(
-                "File too large. Maximum size is 10MB."
+                "Файл слишком большой. Максимальный размер 10MB."
             )
             
         return file
@@ -55,7 +55,7 @@ class TargetVariableForm(forms.Form):
         
         if features:
             self.fields['target_variable'].widget.choices = [
-                ('', 'Select a target variable')
+                ('', 'Выберите целевую переменную')
             ] + [(f, f) for f in features]
 
 
@@ -105,17 +105,17 @@ class PipelineConfigForm(forms.ModelForm):
         
         # Set choices for each method field
         self.fields['filter_method'].widget = forms.Select(choices=[
-            ('', 'Select a filter method')
+            ('', 'Выберите метод фильтрации')
         ] + [(k, k.replace('_', ' ').title()) 
              for k in methods['filter_methods']])
         
         self.fields['wrapper_method'].widget = forms.Select(choices=[
-            ('', 'Select a wrapper method')
+            ('', 'Выберите метод обертки')
         ] + [(k, k.replace('_', ' ').title()) 
              for k in methods['wrapper_methods']])
         
         self.fields['model_method'].widget = forms.Select(choices=[
-            ('', 'Select a model method')
+            ('', 'Выберите метод модели')
         ] + [(k, k.replace('_', ' ').title()) 
              for k in methods['model_methods']])
         

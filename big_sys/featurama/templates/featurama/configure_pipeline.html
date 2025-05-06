@@ -1,109 +1,136 @@
 {% extends "featurama/base.html" %}
 
-{% block title %}Configure Pipeline - Pipeline {{ pipeline.id }}{% endblock %}
+{% block title %}Настройка Пайплайна - Пайплайн {{ pipeline.id }}{% endblock %}
 
-{% block header %}Configure Pipeline #{{ pipeline.id }}{% endblock %}
+{% block header %}Настройка Пайплайна #{{ pipeline.id }}{% endblock %}
+
+{% block nav_pipelines %}active{% endblock %}
 
 {% block additional_styles %}
     .method-section {
-        margin-bottom: 2rem;
-        padding: 1rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        margin-bottom: calc(var(--spacing) * 2);
+        padding: var(--spacing);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: white;
+        box-shadow: var(--shadow);
     }
+    
     .method-description {
-        font-size: 0.9em;
-        color: #666;
+        font-size: 0.9rem;
+        color: var(--text-light);
         margin-top: 0.5rem;
     }
+    
+    .method-section h2 {
+        margin-top: 0;
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: var(--primary-dark);
+    }
+    
     select {
         width: 100%;
         padding: 0.5rem;
-        margin-top: 0.5rem;
+        margin: 0.5rem 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background-color: white;
+        font-size: 0.9rem;
     }
-    .tooltip {
-        position: relative;
-        display: inline-block;
+    
+    select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 2px var(--primary-light);
     }
-    .tooltip .tooltiptext {
-        visibility: hidden;
-        width: 200px;
-        background-color: #555;
-        color: #fff;
-        text-align: center;
-        border-radius: 6px;
-        padding: 5px;
-        position: absolute;
-        z-index: 1;
-        bottom: 125%;
-        left: 50%;
-        margin-left: -100px;
-        opacity: 0;
-        transition: opacity 0.3s;
-    }
-    .tooltip:hover .tooltiptext {
-        visibility: visible;
-        opacity: 1;
-    }
-    .button-row {
-        display: flex;
-        gap: 1rem;
-        margin-top: 1rem;
-    }
-    .phase-overview {
-        margin-bottom: 2rem;
+    
+    .pipeline-phases {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        margin-bottom: calc(var(--spacing) * 2);
+        overflow-x: auto;
+        padding-bottom: 0.5rem;
     }
-    .phase-step {
+    
+    .phase {
         flex: 1;
+        min-width: 130px;
         text-align: center;
-        padding: 1rem;
-        border: 1px solid #eee;
-        border-radius: 4px;
-        margin: 0 0.5rem;
+        padding: 0.75rem 0.5rem;
+        background-color: white;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-right: 2rem;
         position: relative;
+        font-size: 0.9rem;
+        white-space: nowrap;
     }
-    .phase-step.active {
-        background-color: #e3f2fd;
-        border-color: #2196F3;
-        font-weight: bold;
+    
+    .phase:last-child {
+        margin-right: 0;
     }
-    .phase-step.completed {
-        background-color: #e8f5e9;
-        border-color: #4caf50;
-    }
-    .phase-step:after {
+    
+    .phase::after {
         content: '';
         position: absolute;
         top: 50%;
-        right: -15px;
-        width: 0;
-        height: 0;
-        border-top: 8px solid transparent;
-        border-left: 8px solid #ccc;
-        border-bottom: 8px solid transparent;
-        transform: translateY(-50%);
+        right: -1.5rem;
+        width: 1rem;
+        height: 1rem;
+        border-top: 2px solid var(--border);
+        border-right: 2px solid var(--border);
+        transform: translateY(-50%) rotate(45deg);
     }
-    .phase-step:last-child:after {
+    
+    .phase:last-child::after {
         display: none;
+    }
+    
+    .phase.completed {
+        background-color: var(--secondary-light);
+        border-color: var(--secondary);
+        color: var(--secondary-dark);
+    }
+    
+    .phase.active {
+        background-color: var(--primary-light);
+        border-color: var(--primary);
+        color: var(--primary-dark);
+        font-weight: 600;
+    }
+    
+    .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing);
+        margin-top: calc(var(--spacing) * 1.5);
+    }
+    
+    @media (max-width: 768px) {
+        .button-row {
+            flex-direction: column;
+        }
+        
+        .button-row .button {
+            width: 100%;
+        }
     }
 {% endblock %}
 
 {% block content %}
-    <div class="phase-overview">
-        <div class="phase-step completed">
-            Data Upload
+    <div class="pipeline-phases">
+        <div class="phase completed">
+            Загрузка Данных
         </div>
-        <div class="phase-step active">
-            Configure Methods
+        <div class="phase active">
+            Настройка Методов
         </div>
-        <div class="phase-step">
-            Manual Feature Selection
+        <div class="phase">
+            Ручной Выбор Признаков
         </div>
-        <div class="phase-step">
-            View Results
+        <div class="phase">
+            Просмотр Результатов
         </div>
     </div>
 
@@ -111,56 +138,56 @@
         {% csrf_token %}
         
         <div class="method-section">
-            <h2>Filter Method</h2>
+            <h2>Метод Фильтрации</h2>
+            <p class="method-description">
+                Методы фильтрации выбирают признаки на основе их статистических свойств
+            </p>
             <select name="filter_method" required>
-                <option value="">Select a filter method</option>
+                <option value="">Выберите метод фильтрации</option>
                 {% for method, description in filter_methods.items %}
                 <option value="{{ method }}" {% if pipeline.filter_method == method %}selected{% endif %}>
                     {{ description }}
                 </option>
                 {% endfor %}
             </select>
-            <div class="method-description">
-                Filter methods select features based on their statistical properties
-            </div>
         </div>
 
         <div class="method-section">
-            <h2>Wrapper Method</h2>
+            <h2>Метод Обертки</h2>
+            <p class="method-description">
+                Методы обертки используют модель машинного обучения для оценки подмножеств признаков
+            </p>
             <select name="wrapper_method" required>
-                <option value="">Select a wrapper method</option>
+                <option value="">Выберите метод обертки</option>
                 {% for method, description in wrapper_methods.items %}
                 <option value="{{ method }}" {% if pipeline.wrapper_method == method %}selected{% endif %}>
                     {{ description }}
                 </option>
                 {% endfor %}
             </select>
-            <div class="method-description">
-                Wrapper methods use a machine learning model to evaluate feature subsets
-            </div>
         </div>
 
         <div class="method-section">
-            <h2>Model Method</h2>
+            <h2>Модель</h2>
+            <p class="method-description">
+                Финальная модель для прогнозирования
+            </p>
             <select name="model_method" required>
-                <option value="">Select a model method</option>
+                <option value="">Выберите модель</option>
                 {% for method, description in model_methods.items %}
                 <option value="{{ method }}" {% if pipeline.model_method == method %}selected{% endif %}>
                     {{ description }}
                 </option>
                 {% endfor %}
             </select>
-            <div class="method-description">
-                The final model to be used for prediction
-            </div>
         </div>
 
         <div class="button-row">
-            <button type="submit" class="button button-primary">Continue to Feature Selection</button>
+            <button type="submit" class="button button-primary">Продолжить к Выбору Признаков</button>
             
             {% if has_results %}
-            <a href="{% url 'featurama:results_summary' pipeline.id %}" class="button">
-                Back to Results
+            <a href="{% url 'featurama:results_summary' pipeline.id %}" class="button button-outline">
+                Назад к Результатам
             </a>
             {% endif %}
         </div>

@@ -35,7 +35,7 @@ class Dataset(models.Model):
 
     def __str__(self) -> str:
         """Return a string representation of the dataset."""
-        return str(self.name or f"Dataset #{self.pk}")
+        return str(self.name or f"Набор данных #{self.pk}")
 
     def get_dataframe(self) -> pd.DataFrame:
         """Return the data as a pandas DataFrame."""
@@ -51,7 +51,7 @@ class Dataset(models.Model):
     def get_filename(self) -> str:
         """Return just the filename without path."""
         if not self.data:
-            return "No file"
+            return "Нет файла"
         return self.name
     
     def get_file_extension(self) -> str:
@@ -97,13 +97,13 @@ class Pipeline(models.Model):
     class Meta:
         """Meta options for the Pipeline model."""
         ordering = ['-created_at']
-        verbose_name = "Feature Selection Pipeline"
-        verbose_name_plural = "Feature Selection Pipelines"
+        verbose_name = "Пайплайн выбора признаков"
+        verbose_name_plural = "Пайплайны выбора признаков"
 
     def __str__(self) -> str:
         """Return a string representation of the pipeline."""
-        dataset_name = self.dataset.name if self.dataset else "No dataset"
-        return f"Pipeline #{self.pk} for {dataset_name}"
+        dataset_name = self.dataset.name if self.dataset else "Нет набора данных"
+        return f"Пайплайн #{self.pk} для {dataset_name}"
     
     def is_dataset_uploaded(self) -> bool:
         """Check if a dataset has been uploaded to this pipeline."""
@@ -120,10 +120,10 @@ class Pipeline(models.Model):
     def get_configuration_status(self) -> str:
         """Get a human-readable status of the pipeline configuration."""
         if not self.is_dataset_uploaded():
-            return "Awaiting dataset upload"
+            return "Ожидает загрузки набора данных"
         if not self.is_configured():
-            return "Awaiting configuration"
-        return "Ready for execution"
+            return "Ожидает настройки"
+        return "Готов к выполнению"
 
 
 class FeatureSelectionResult(models.Model):
@@ -155,12 +155,12 @@ class FeatureSelectionResult(models.Model):
     class Meta:
         """Meta options for the FeatureSelectionResult model."""
         ordering = ['-created_at']
-        verbose_name = "Feature Selection Result"
-        verbose_name_plural = "Feature Selection Results"
+        verbose_name = "Результат выбора признаков"
+        verbose_name_plural = "Результаты выбора признаков"
     
     def __str__(self) -> str:
         """Return a string representation of the result."""
-        return f"Selection Result for Pipeline #{self.pipeline.id}"
+        return f"Результат выбора для пайплайна #{self.pipeline.id}"
 
 
 class PerformanceMetric(models.Model):
@@ -189,12 +189,12 @@ class PerformanceMetric(models.Model):
     class Meta:
         """Meta options for the PerformanceMetric model."""
         ordering = ['-created_at']
-        verbose_name = "Performance Metric"
-        verbose_name_plural = "Performance Metrics"
+        verbose_name = "Метрика производительности"
+        verbose_name_plural = "Метрики производительности"
     
     def __str__(self) -> str:
         """Return a string representation of the metrics."""
-        return f"Metrics for Pipeline #{self.pipeline.id}"
+        return f"Метрики для пайплайна #{self.pipeline.id}"
 
 
 class ShapExplanation(models.Model):
@@ -229,12 +229,12 @@ class ShapExplanation(models.Model):
     class Meta:
         """Meta options for the ShapExplanation model."""
         ordering = ['-created_at']
-        verbose_name = "SHAP Explanation"
-        verbose_name_plural = "SHAP Explanations"
+        verbose_name = "SHAP объяснение"
+        verbose_name_plural = "SHAP объяснения"
     
     def __str__(self) -> str:
         """Return a string representation of the explanation."""
-        return f"SHAP Explanation for Pipeline #{self.pipeline.id}"
+        return f"SHAP объяснение для пайплайна #{self.pipeline.id}"
     
     def delete(self, *args, **kwargs):
         """Override delete to remove the associated images."""

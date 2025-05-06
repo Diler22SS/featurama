@@ -73,7 +73,7 @@ def validate_dataset(
     """
     # Validate that the target variable exists
     if target_variable not in df.columns:
-        msg = f"Target variable '{target_variable}' not found in dataset"
+        msg = f"Целевая переменная '{target_variable}' не найдена в наборе данных"
         return False, msg
     
     # Subset the dataframe to only include selected features and target
@@ -114,10 +114,10 @@ def check_no_missing_values(df: pd.DataFrame) -> Tuple[bool, Optional[str]]:
     if len(columns_with_missing) > 0:
         # Format error message with columns and their missing counts
         column_details = ', '.join([
-            f"{col}: {count} missing" 
+            f"{col}: {count} пропущено" 
             for col, count in columns_with_missing.items()
         ])
-        return False, f"Dataset contains missing values: {column_details}"
+        return False, f"Набор данных содержит пропущенные значения: {column_details}"
     
     return True, None
 
@@ -151,21 +151,21 @@ def check_binary_target(
             return True, None
         elif len(unique_numeric) == 2:
             error_msg = (
-                f"Target variable '{target_variable}' has values "
-                f"{unique_numeric} instead of required 0/1. "
-                f"Consider encoding it before upload."
+                f"Целевая переменная '{target_variable}' имеет значения "
+                f"{unique_numeric} вместо требуемых 0/1. "
+                f"Рассмотрите кодирование перед загрузкой."
             )
             return False, error_msg
         else:
             error_msg = (
-                f"Target variable '{target_variable}' has "
-                f"{len(unique_numeric)} unique values instead of 2."
+                f"Целевая переменная '{target_variable}' имеет "
+                f"{len(unique_numeric)} уникальных значений вместо 2."
             )
             return False, error_msg
     except Exception:
         error_msg = (
-            f"Target variable '{target_variable}' must be binary "
-            f"(0/1). Found values: {unique_values[:5]}..."
+            f"Целевая переменная '{target_variable}' должна быть бинарной "
+            f"(0/1). Найдены значения: {unique_values[:5]}..."
         )
         return False, error_msg
 
@@ -196,13 +196,13 @@ def check_target_balance(
         if min_proportion < threshold:
             minority_class = value_counts.idxmin()
             error_msg = (
-                f"Target variable '{target_variable}' is imbalanced. "
-                f"Class {minority_class} represents only "
-                f"{min_proportion:.1%} of the data. "
-                f"Minimum required is {threshold:.1%}."
+                f"Целевая переменная '{target_variable}' несбалансирована. "
+                f"Класс {minority_class} представляет только "
+                f"{min_proportion:.1%} данных. "
+                f"Минимальное требуемое значение: {threshold:.1%}."
             )
             return False, error_msg
         
         return True, None
     except Exception:
-        return False, f"Error checking target balance for '{target_variable}'" 
+        return False, f"Ошибка проверки баланса целевой переменной для '{target_variable}'" 

@@ -80,6 +80,9 @@ class Pipeline(models.Model):
         filter_method: The selected filter method
         wrapper_method: The selected wrapper method
         model_method: The selected model method
+        filter_params: JSON field storing parameters for the filter method
+        wrapper_params: JSON field storing parameters for the wrapper method
+        model_params: JSON field storing parameters for the model method
     """
     
     dataset = models.ForeignKey(
@@ -93,6 +96,9 @@ class Pipeline(models.Model):
     filter_method = models.CharField(max_length=100, null=True, blank=True)
     wrapper_method = models.CharField(max_length=100, null=True, blank=True)
     model_method = models.CharField(max_length=100, null=True, blank=True)
+    filter_params = models.JSONField(null=True, blank=True)
+    wrapper_params = models.JSONField(null=True, blank=True)
+    model_params = models.JSONField(null=True, blank=True)
 
     class Meta:
         """Meta options for the Pipeline model."""

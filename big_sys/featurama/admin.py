@@ -28,6 +28,19 @@ class PipelineAdmin(admin.ModelAdmin):
     )
     search_fields = ('id', 'dataset__name')
     date_hierarchy = 'created_at'
+    readonly_fields = ('created_at',)
+    fieldsets = (
+        ('Основная информация', {
+            'fields': ('dataset', 'created_at')
+        }),
+        ('Методы', {
+            'fields': ('filter_method', 'wrapper_method', 'model_method')
+        }),
+        ('Параметры методов', {
+            'fields': ('filter_params', 'wrapper_params', 'model_params'),
+            'classes': ('collapse',)
+        }),
+    )
 
 
 @admin.register(FeatureSelectionResult)

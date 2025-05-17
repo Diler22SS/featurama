@@ -160,7 +160,7 @@ def filter_variance_threshold(
     print(f"Filter selected features IN variance threshold: {len(all_features)} \n {all_features}")
     X_all = X[all_features]
 
-    threshold = kwargs.get('threshold', DEFAULT_THRESHOLD)
+    threshold = kwargs.get('threshold', 0.1)
     selector = VarianceThreshold(threshold=threshold)
     selector.fit(X_all, y)
     selected_columns = X_all.columns[selector.get_support()]
@@ -168,8 +168,8 @@ def filter_variance_threshold(
         
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
-            filtered_features=selected_columns.tolist()
-        )
+        filtered_features=selected_columns.tolist()
+    )
 
 def filter_anova(
     pipeline: Pipeline,
@@ -186,28 +186,16 @@ def filter_anova(
     X_all = X[all_features]
     X_scaled = _scale_features(X_all)
     
-    k = kwargs.get('k', 'all')
+    k = kwargs.get('k', int(0.5 * X_all.shape[1]))
     selector = SelectKBest(score_func=f_classif, k=k)
     selector.fit(X_scaled, y)
-        
-    scores = selector.scores_
-    p_values = selector.pvalues_
-    feature_scores = pd.DataFrame({
-            'feature': X_all.columns,
-            'f_score': scores,
-            'p_value': p_values
-        })
-    print(feature_scores)
-        
-    top_features = feature_scores[
-        feature_scores['p_value'] < 0.05
-        ]['feature'].tolist()
-    print(f"Filter selected features OUT anova: {len(top_features)} \n {top_features}", end="\n\n")
+    selected_columns = X_all.columns[selector.get_support()]
+    print(f"Filter selected features OUT anova: {len(selected_columns)} \n {selected_columns.tolist()}", end="\n\n")
         
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
-            filtered_features=top_features
-        )
+        filtered_features=selected_columns.tolist()
+    )
 
 def filter_mutual_info(
     pipeline: Pipeline,
@@ -223,24 +211,15 @@ def filter_mutual_info(
     print(f"Filter selected features IN mutual info: {len(all_features)} \n {all_features}")
     X_all = X[all_features]
 
-    k = kwargs.get('k', 'all')
+    k = kwargs.get('k', int(0.5 * X_all.shape[1]))
     selector = SelectKBest(score_func=mutual_info_classif, k=k)
-    selector.fit(X_all, y)  
-    
-    scores = selector.scores_
-    feature_scores = pd.DataFrame({
-        'feature': X_all.columns,
-        'mutual_info': scores,
-    })
-    print(feature_scores)
-
-    top_features = feature_scores[
-        feature_scores['mutual_info'] > DEFAULT_THRESHOLD
-    ]['feature'].tolist()
+    selector.fit(X_all, y)
+    selected_columns = X_all.columns[selector.get_support()]
+    print(f"Filter selected features OUT mutual info: {len(selected_columns)} \n {selected_columns.tolist()}", end="\n\n")
 
     return FeatureSelectionResult.objects.create(
         pipeline=pipeline,
-        filtered_features=top_features
+        filtered_features=selected_columns.tolist()
     )
 
 def filter_mrmr(
@@ -257,10 +236,14 @@ def filter_mrmr(
     print(f"Filter selected features IN mRMR: {len(all_features)} \n {all_features}")
     X_all = X[all_features] 
 
-    k = kwargs.get('k', 0.5 * X.shape[1])
+    n_features = kwargs.get('n_features', int(0.5 * X_all.shape[1]))
+    method = kwargs.get('method', 'MID')
+    if method not in ['MID', 'MIQ']:
+        raise ValueError("Method must be either 'MID' or 'MIQ'")
+
     data = X_all.copy()
     data['target'] = y
-    selected = mRMR(data, 'MIQ', k)
+    selected = mRMR(data, method, n_features)
     selected = [col for col in selected if col != 'target']
 
     if not selected:
@@ -296,13 +279,16 @@ def wrapper_sfs_logreg(
         random_state=DEFAULT_RANDOM_STATE,
     )
     
-    k_features = kwargs.get('k_features', DEFAULT_K_FEATURES)
+    scoring = kwargs.get('scoring', 'accuracy')
+    if scoring not in ['accuracy', 'f1', 'precision', 'recall', 'roc_auc']:
+        raise ValueError("Invalid scoring metric")
+    
     sfs = SFS(
         model,
-        k_features=k_features,
+        k_features='best',
         forward=True,
         floating=False,
-        scoring='roc_auc',
+        scoring=scoring,
         verbose=2,
         cv=DEFAULT_CV
     )
@@ -340,13 +326,16 @@ def wrapper_sfs_tree(
         random_state=DEFAULT_RANDOM_STATE
     )
     
-    k_features = kwargs.get('k_features', DEFAULT_K_FEATURES)
+    scoring = kwargs.get('scoring', 'accuracy')
+    if scoring not in ['accuracy', 'f1', 'precision', 'recall', 'roc_auc']:
+        raise ValueError("Invalid scoring metric")
+    
     sfs = SFS(
         model,
-        k_features=k_features,
+        k_features='best',
         forward=True,
         floating=False,
-        scoring='roc_auc',
+        scoring=scoring,
         verbose=2,
         cv=DEFAULT_CV
     )
@@ -383,7 +372,7 @@ def wrapper_rfe_logreg(
         random_state=DEFAULT_RANDOM_STATE,
     )
     
-    n_features = kwargs.get('n_features_to_select', None)
+    n_features = kwargs.get('n_features_to_select', 0.5)
     rfe = RFE(estimator=model, n_features_to_select=n_features, verbose=2)
     rfe.fit(X_scaled, y)
     selected_features = list(X_filtered.columns[rfe.support_])
@@ -419,7 +408,7 @@ def wrapper_rfe_tree(
         random_state=DEFAULT_RANDOM_STATE
     )
     
-    n_features = kwargs.get('n_features_to_select', None)
+    n_features = kwargs.get('n_features_to_select', 0.5)
     rfe = RFE(estimator=model, n_features_to_select=n_features, verbose=2)
     rfe.fit(X_filtered, y)
     selected_features = list(X_filtered.columns[rfe.support_])
@@ -476,23 +465,39 @@ def model_logistic_regression(
     print(f"Model selected features IN logreg: {len(manual_features)} \n {manual_features}")
     X_manual = X[manual_features]
 
+    test_size = kwargs.get('test_size', 0.25)
     X_train, X_test, y_train, y_test = train_test_split(
         X_manual,
         y,
-        test_size=DEFAULT_TEST_SIZE,
+        test_size=test_size,
         random_state=DEFAULT_RANDOM_STATE
     )
     
     X_train_scaled = _scale_features(X_train)
     X_test_scaled = _scale_features(X_test)
     
+    penalty = kwargs.get('penalty', 'l2')
+    solver = kwargs.get('solver', 'lbfgs')
+    C = kwargs.get('C', 1.0)
+    
+    valid_solvers = {
+        'l1': ['liblinear', 'saga'],
+        'l2': ['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'],
+        'elasticnet': ['saga'],
+        'none': ['newton-cg', 'lbfgs', 'sag', 'saga']
+    }
+    
+    if penalty not in valid_solvers:
+        raise ValueError(f"Invalid penalty: {penalty}")
+    if solver not in valid_solvers[penalty]:
+        raise ValueError(f"Invalid solver {solver} for penalty {penalty}")
+    
     model = LogisticRegression(
-        penalty='l2',
-        C=1.0,
-        solver='liblinear',
+        penalty=penalty,
+        C=C,
+        solver=solver,
         max_iter=1000,
         random_state=DEFAULT_RANDOM_STATE,
-        **kwargs
     )
     model.fit(X_train_scaled, y_train)
     y_pred = model.predict(X_test_scaled)
@@ -537,21 +542,26 @@ def model_xgb_linear(
     print(f"Model selected features IN xgb linear: {len(manual_features)} \n {manual_features}")
     X_manual = X[manual_features]
 
+    test_size = kwargs.get('test_size', 0.25)
     X_train, X_test, y_train, y_test = train_test_split(
         X_manual,
         y,
-        test_size=DEFAULT_TEST_SIZE,
+        test_size=test_size,
         random_state=DEFAULT_RANDOM_STATE
     )
     
     X_train_scaled = _scale_features(X_train)
     X_test_scaled = _scale_features(X_test)
     
+    n_estimators = kwargs.get('n_estimators', 100)
+    learning_rate = kwargs.get('learning_rate', 0.3)
+    
     model = XGBClassifier(
         booster='gblinear',
+        n_estimators=n_estimators,
+        learning_rate=learning_rate,
         eval_metric='auc',
         random_state=DEFAULT_RANDOM_STATE,
-        **kwargs
     )
     model.fit(X_train_scaled, y_train)
     y_pred = model.predict(X_test_scaled)
@@ -596,22 +606,30 @@ def model_decision_tree(
     print(f"Model selected features IN dtree: {len(manual_features)} \n {manual_features}")
     X_manual = X[manual_features]
 
+    test_size = kwargs.get('test_size', 0.25)
     X_train, X_test, y_train, y_test = train_test_split(
         X_manual,
         y,
-        test_size=DEFAULT_TEST_SIZE,
-            random_state=DEFAULT_RANDOM_STATE
-        )
-        
+        test_size=test_size,
+        random_state=DEFAULT_RANDOM_STATE
+    )
+    
+    max_depth = kwargs.get('max_depth', None)
+    min_samples_split = kwargs.get('min_samples_split', 0.01)
+    min_samples_leaf = kwargs.get('min_samples_leaf', 0.01)
+    criterion = kwargs.get('criterion', 'gini')
+    
+    if criterion not in ['gini', 'entropy', 'log_loss']:
+        raise ValueError("Invalid criterion")
+    
     model = DecisionTreeClassifier(
-        criterion='gini',
+        criterion=criterion,
         splitter='best',
-        max_depth=5,
-        min_samples_split=10,
-        min_samples_leaf=5,
+        max_depth=max_depth,
+        min_samples_split=min_samples_split,
+        min_samples_leaf=min_samples_leaf,
         max_features=None,
         random_state=DEFAULT_RANDOM_STATE,
-        **kwargs
     )
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -622,22 +640,22 @@ def model_decision_tree(
 
     metrics = {
         'roc_auc': roc_auc_score(y_test, model.predict_proba(X_test)[:, 1]),
-            'accuracy': accuracy_score(y_test, y_pred),
-            'f1_score': f1_score(y_test, y_pred)
-        }
+        'accuracy': accuracy_score(y_test, y_pred),
+        'f1_score': f1_score(y_test, y_pred)
+    }
     print(f"Model metrics OUT decision tree: \n {metrics}", end="\n\n")
 
     return (
         PerformanceMetric.objects.create(pipeline=pipeline, **metrics),
-            ShapExplanation.objects.create(
+        ShapExplanation.objects.create(
             pipeline=pipeline,
-                global_explanation_image=ContentFile(
-                    global_plot, 
+            global_explanation_image=ContentFile(
+                global_plot,
                 name=f'global_shap_{pipeline.id}.png'
-                ),
-                distribution_explanation_image=ContentFile(
-                    distribution_plot, 
-                name=f'distribution_shap_{pipeline.id}.png' 
+            ),
+            distribution_explanation_image=ContentFile(
+                distribution_plot,
+                name=f'distribution_shap_{pipeline.id}.png'
             )
         )
     )
@@ -646,7 +664,7 @@ def model_xgb_tree(
     pipeline: Pipeline,
     X: pd.DataFrame,
     y: pd.Series,
-        **kwargs
+    **kwargs
 ) -> Tuple[PerformanceMetric, ShapExplanation]:
     """Train and evaluate an XGBoost model with tree booster."""
     if not pipeline.dataset or not pipeline.dataset.user_selected_features:
@@ -656,19 +674,24 @@ def model_xgb_tree(
     print(f"Model selected features IN xgb tree: {len(manual_features)} \n {manual_features}")
     X_manual = X[manual_features]
 
+    test_size = kwargs.get('test_size', 0.25)
     X_train, X_test, y_train, y_test = train_test_split(
         X_manual,
         y,
-        test_size=DEFAULT_TEST_SIZE,
+        test_size=test_size,
         random_state=DEFAULT_RANDOM_STATE
     )
-
+    
+    n_estimators = kwargs.get('n_estimators', 100)
+    learning_rate = kwargs.get('learning_rate', 0.3)
+    
     model = XGBClassifier(
         booster='gbtree',
+        n_estimators=n_estimators,
+        learning_rate=learning_rate,
         eval_metric='auc',
-            random_state=DEFAULT_RANDOM_STATE,
-            **kwargs
-        )
+        random_state=DEFAULT_RANDOM_STATE,
+    )
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     explainer, shap_values = shap_tree_explainer(model, X_test)
@@ -693,7 +716,7 @@ def model_xgb_tree(
             ),
             distribution_explanation_image=ContentFile(
                 distribution_plot,
-                name=f'distribution_shap_{pipeline.id}.png' 
+                name=f'distribution_shap_{pipeline.id}.png'
             )
         )
     )
@@ -743,6 +766,9 @@ def run_pipeline(pipeline: Pipeline, run_model: bool = True) -> None:
         'filter_method': pipeline.filter_method,
         'wrapper_method': pipeline.wrapper_method,
         'model_method': pipeline.model_method,
+        'filter_params': pipeline.filter_params or {},
+        'wrapper_params': pipeline.wrapper_params or {},
+        'model_params': pipeline.model_params or {},
     }
     print(f"Running pipeline with config: {config}", end="\n\n")
     

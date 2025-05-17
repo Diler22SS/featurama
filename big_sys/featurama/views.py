@@ -12,7 +12,8 @@ from .utils import (
 from .services import MethodsService, PipelineResultsService, DatasetService
 from .forms import (
     DatasetUploadForm, TargetVariableForm, 
-    PipelineConfigForm, FeatureSelectionForm
+    PipelineConfigForm, FeatureSelectionForm,
+    FilterMethodConfigForm, WrapperMethodConfigForm, ModelMethodConfigForm
 )
 from .algorithms import run_pipeline
 import os
@@ -342,8 +343,89 @@ def configure_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     
     if request.method == 'POST':
         form = PipelineConfigForm(request.POST, instance=pipeline)
-        if form.is_valid():
-            form.save()
+        filter_form = FilterMethodConfigForm(request.POST)
+        wrapper_form = WrapperMethodConfigForm(request.POST)
+        model_form = ModelMethodConfigForm(request.POST)
+        
+        valid_forms = (form.is_valid() and filter_form.is_valid() and 
+                      wrapper_form.is_valid() and model_form.is_valid())
+        
+        if valid_forms:
+            # First save the basic pipeline configuration
+            pipeline_instance = form.save(commit=False)
+            
+            # Get the filter method parameters with defaults
+            filter_method = form.cleaned_data.get('filter_method')
+            filter_params = {}
+            
+            # Add default values based on method
+            if filter_method == 'Variance Threshold':
+                # Default threshold is 0.1
+                filter_params['threshold'] = filter_form.cleaned_data.get('threshold', 0.1)
+            elif filter_method == 'ANOVA':
+                # If k is not provided, use a sensible default (e.g., half of features)
+                if filter_form.cleaned_data.get('k_anova'):
+                    filter_params['k'] = filter_form.cleaned_data['k_anova']
+            elif filter_method == 'Mutual Information':
+                # If k is not provided, use a sensible default
+                if filter_form.cleaned_data.get('k_mutual_info'):
+                    filter_params['k'] = filter_form.cleaned_data['k_mutual_info']
+            elif filter_method == 'MRMR':
+                # Default n_features if not provided
+                if filter_form.cleaned_data.get('n_features'):
+                    filter_params['n_features'] = filter_form.cleaned_data['n_features']
+                # Default method is 'MID'
+                filter_params['method'] = filter_form.cleaned_data.get('method', 'MID')
+            
+            # Get the wrapper method parameters with defaults
+            wrapper_method = form.cleaned_data.get('wrapper_method')
+            wrapper_params = {}
+            
+            # Add default values based on method
+            if wrapper_method == 'SFS with Logistic Regression':
+                # Default scoring is 'accuracy'
+                wrapper_params['scoring'] = wrapper_form.cleaned_data.get('scoring_logreg', 'accuracy')
+            elif wrapper_method == 'SFS with Decision Tree':
+                # Default scoring is 'accuracy'
+                wrapper_params['scoring'] = wrapper_form.cleaned_data.get('scoring_tree', 'accuracy')
+            elif wrapper_method == 'RFE with Logistic Regression':
+                # Default n_features_to_select is 0.5 (50% of features)
+                wrapper_params['n_features_to_select'] = wrapper_form.cleaned_data.get('n_features_logreg', 0.5)
+            elif wrapper_method == 'RFE with Decision Tree':
+                # Default n_features_to_select is 0.5 (50% of features)
+                wrapper_params['n_features_to_select'] = wrapper_form.cleaned_data.get('n_features_tree', 0.5)
+            
+            # Get the model method parameters with defaults
+            model_method = form.cleaned_data.get('model_method')
+            model_params = {}
+            
+            # Add common default parameters
+            model_params['test_size'] = model_form.cleaned_data.get('test_size', 0.25)
+            
+            # Add specific defaults based on method
+            if model_method == 'Logistic Regression':
+                model_params['C'] = model_form.cleaned_data.get('C', 1.0)
+                model_params['penalty'] = model_form.cleaned_data.get('penalty', 'l2')
+                model_params['solver'] = model_form.cleaned_data.get('solver', 'lbfgs')
+                
+            elif model_method in ['XGBoost Linear', 'XGBoost Tree']:
+                model_params['n_estimators'] = model_form.cleaned_data.get('n_estimators', 100)
+                model_params['learning_rate'] = model_form.cleaned_data.get('learning_rate', 0.3)
+                
+            elif model_method == 'Decision Tree':
+                # Only add max_depth if explicitly provided
+                if model_form.cleaned_data.get('max_depth'):
+                    model_params['max_depth'] = model_form.cleaned_data['max_depth']
+                
+                model_params['min_samples_split'] = model_form.cleaned_data.get('min_samples_split', 0.01)
+                model_params['min_samples_leaf'] = model_form.cleaned_data.get('min_samples_leaf', 0.01)
+                model_params['criterion'] = model_form.cleaned_data.get('criterion', 'gini')
+            
+            # Set the parameters on the pipeline instance
+            pipeline_instance.filter_params = filter_params
+            pipeline_instance.wrapper_params = wrapper_params
+            pipeline_instance.model_params = model_params
+            pipeline_instance.save()
             
             # Run filter and wrapper methods only
             run_pipeline(pipeline, run_model=False)
@@ -357,6 +439,9 @@ def configure_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
         context = {
             'pipeline': pipeline,
             'form': form,
+            'filter_form': filter_form,
+            'wrapper_form': wrapper_form,
+            'model_form': model_form,
             'has_results': has_results,
             **MethodsService.get_available_methods()
         }
@@ -364,9 +449,96 @@ def configure_pipeline(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     
     # GET request - show the form
     form = PipelineConfigForm(instance=pipeline)
+    
+    # Create filter form and populate with existing params if available
+    filter_form = FilterMethodConfigForm()
+    if pipeline.filter_params:
+        # Pre-populate form based on filter method
+        if (pipeline.filter_method == 'Variance Threshold' and 
+            'threshold' in pipeline.filter_params):
+            filter_form.initial['threshold'] = pipeline.filter_params['threshold']
+        
+        elif pipeline.filter_method == 'ANOVA' and 'k' in pipeline.filter_params:
+            filter_form.initial['k_anova'] = pipeline.filter_params['k']
+        
+        elif (pipeline.filter_method == 'Mutual Information' and 
+              'k' in pipeline.filter_params):
+            filter_form.initial['k_mutual_info'] = pipeline.filter_params['k']
+        
+        elif pipeline.filter_method == 'MRMR':
+            if 'n_features' in pipeline.filter_params:
+                filter_form.initial['n_features'] = pipeline.filter_params['n_features']
+            if 'method' in pipeline.filter_params:
+                filter_form.initial['method'] = pipeline.filter_params['method']
+    
+    # Create wrapper form and populate with existing params if available
+    wrapper_form = WrapperMethodConfigForm()
+    if pipeline.wrapper_params:
+        # Pre-populate form based on wrapper method
+        if (pipeline.wrapper_method == 'SFS with Logistic Regression' and 
+            'scoring' in pipeline.wrapper_params):
+            wrapper_form.initial['scoring_logreg'] = pipeline.wrapper_params['scoring']
+        
+        elif (pipeline.wrapper_method == 'SFS with Decision Tree' and 
+              'scoring' in pipeline.wrapper_params):
+            wrapper_form.initial['scoring_tree'] = pipeline.wrapper_params['scoring']
+        
+        elif (pipeline.wrapper_method == 'RFE with Logistic Regression' and 
+              'n_features_to_select' in pipeline.wrapper_params):
+            wrapper_form.initial['n_features_logreg'] = (
+                pipeline.wrapper_params['n_features_to_select']
+            )
+        
+        elif (pipeline.wrapper_method == 'RFE with Decision Tree' and 
+              'n_features_to_select' in pipeline.wrapper_params):
+            wrapper_form.initial['n_features_tree'] = (
+                pipeline.wrapper_params['n_features_to_select']
+            )
+    
+    # Create model form and populate with existing params if available
+    model_form = ModelMethodConfigForm()
+    if pipeline.model_params:
+        # Common parameters
+        if 'test_size' in pipeline.model_params:
+            model_form.initial['test_size'] = pipeline.model_params['test_size']
+            
+        # Logistic Regression parameters
+        if pipeline.model_method == 'Logistic Regression':
+            if 'C' in pipeline.model_params:
+                model_form.initial['C'] = pipeline.model_params['C']
+            if 'penalty' in pipeline.model_params:
+                model_form.initial['penalty'] = pipeline.model_params['penalty']
+            if 'solver' in pipeline.model_params:
+                model_form.initial['solver'] = pipeline.model_params['solver']
+                
+        # XGBoost parameters
+        elif pipeline.model_method in ['XGBoost Linear', 'XGBoost Tree']:
+            if 'n_estimators' in pipeline.model_params:
+                model_form.initial['n_estimators'] = pipeline.model_params['n_estimators']
+            if 'learning_rate' in pipeline.model_params:
+                model_form.initial['learning_rate'] = pipeline.model_params['learning_rate']
+                
+        # Decision Tree parameters
+        elif pipeline.model_method == 'Decision Tree':
+            if 'max_depth' in pipeline.model_params:
+                model_form.initial['max_depth'] = pipeline.model_params['max_depth']
+            if 'min_samples_split' in pipeline.model_params:
+                model_form.initial['min_samples_split'] = (
+                    pipeline.model_params['min_samples_split']
+                )
+            if 'min_samples_leaf' in pipeline.model_params:
+                model_form.initial['min_samples_leaf'] = (
+                    pipeline.model_params['min_samples_leaf']
+                )
+            if 'criterion' in pipeline.model_params:
+                model_form.initial['criterion'] = pipeline.model_params['criterion']
+    
     context = {
         'pipeline': pipeline,
         'form': form,
+        'filter_form': filter_form,
+        'wrapper_form': wrapper_form,
+        'model_form': model_form,
         'has_results': has_results,
         **MethodsService.get_available_methods()
     }

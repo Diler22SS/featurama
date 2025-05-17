@@ -45,6 +45,58 @@
         box-shadow: 0 0 0 2px var(--primary-light);
     }
     
+    .parameter-group {
+        margin-top: 1rem;
+        display: none;
+        padding: 1rem;
+        background-color: var(--bg-light);
+        border-radius: var(--radius);
+        border: 1px solid var(--border-light);
+    }
+    
+    .parameter-group.active {
+        display: block;
+    }
+    
+    .parameter-field {
+        margin-bottom: 1rem;
+    }
+    
+    .parameter-field label {
+        display: block;
+        margin-bottom: 0.3rem;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+    
+    .parameter-field input {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+    }
+    
+    .parameter-field .help-text {
+        font-size: 0.8rem;
+        color: var(--text-light);
+        margin-top: 0.2rem;
+    }
+    
+    .radio-group {
+        margin-top: 0.5rem;
+    }
+    
+    .radio-option {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+    
+    .radio-option input {
+        margin-right: 0.5rem;
+        width: auto;
+    }
+    
     .pipeline-phases {
         display: flex;
         align-items: center;
@@ -142,7 +194,7 @@
             <p class="method-description">
                 Методы фильтрации выбирают признаки на основе их статистических свойств
             </p>
-            <select name="filter_method" required>
+            <select name="filter_method" id="filter-method-select" required>
                 <option value="">Выберите метод фильтрации</option>
                 {% for method, description in filter_methods.items %}
                 <option value="{{ method }}" {% if pipeline.filter_method == method %}selected{% endif %}>
@@ -150,6 +202,67 @@
                 </option>
                 {% endfor %}
             </select>
+            
+            <!-- Variance Threshold Parameters -->
+            <div id="variance-threshold-params" class="parameter-group {% if pipeline.filter_method == 'Variance Threshold' %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_threshold">Порог дисперсии:</label>
+                    <input type="number" name="threshold" id="id_threshold" step="0.01" min="0" 
+                           value="{{ filter_form.threshold.value|default:0.1 }}" 
+                           class="form-control">
+                    <div class="help-text">{{ filter_form.threshold.help_text }}</div>
+                </div>
+            </div>
+            
+            <!-- ANOVA Parameters -->
+            <div id="anova-params" class="parameter-group {% if pipeline.filter_method == 'ANOVA' %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_k_anova">Количество признаков:</label>
+                    <input type="number" name="k_anova" id="id_k_anova" min="1" 
+                           value="{{ filter_form.k_anova.value|default:'' }}" 
+                           class="form-control">
+                    <div class="help-text">{{ filter_form.k_anova.help_text }}</div>
+                </div>
+            </div>
+            
+            <!-- Mutual Information Parameters -->
+            <div id="mutual-info-params" class="parameter-group {% if pipeline.filter_method == 'Mutual Information' %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_k_mutual_info">Количество признаков:</label>
+                    <input type="number" name="k_mutual_info" id="id_k_mutual_info" min="1" 
+                           value="{{ filter_form.k_mutual_info.value|default:'' }}" 
+                           class="form-control">
+                    <div class="help-text">{{ filter_form.k_mutual_info.help_text }}</div>
+                </div>
+            </div>
+            
+            <!-- mRMR Parameters -->
+            <div id="mrmr-params" class="parameter-group {% if pipeline.filter_method == 'MRMR' %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_n_features">Количество признаков:</label>
+                    <input type="number" name="n_features" id="id_n_features" min="1" 
+                           value="{{ filter_form.n_features.value|default:'' }}" 
+                           class="form-control">
+                    <div class="help-text">{{ filter_form.n_features.help_text }}</div>
+                </div>
+                
+                <div class="parameter-field">
+                    <label>Метод:</label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" name="method" id="id_method_mid" value="MID" 
+                                  {% if not filter_form.method.value or filter_form.method.value == 'MID' %}checked{% endif %}>
+                            <label for="id_method_mid">MID - Mutual Information Difference</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" name="method" id="id_method_miq" value="MIQ"
+                                  {% if filter_form.method.value == 'MIQ' %}checked{% endif %}>
+                            <label for="id_method_miq">MIQ - Mutual Information Quotient</label>
+                        </div>
+                    </div>
+                    <div class="help-text">{{ filter_form.method.help_text }}</div>
+                </div>
+            </div>
         </div>
 
         <div class="method-section">
@@ -157,7 +270,7 @@
             <p class="method-description">
                 Методы обертки используют модель машинного обучения для оценки подмножеств признаков
             </p>
-            <select name="wrapper_method" required>
+            <select name="wrapper_method" id="wrapper-method-select" required>
                 <option value="">Выберите метод обертки</option>
                 {% for method, description in wrapper_methods.items %}
                 <option value="{{ method }}" {% if pipeline.wrapper_method == method %}selected{% endif %}>
@@ -165,6 +278,60 @@
                 </option>
                 {% endfor %}
             </select>
+            
+            <!-- SFS with Logistic Regression Parameters -->
+            <div id="sfs-logreg-params" class="parameter-group {% if pipeline.wrapper_method == 'SFS with Logistic Regression' %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_scoring_logreg">Метрика оценки:</label>
+                    <select name="scoring_logreg" id="id_scoring_logreg" class="form-control">
+                        {% for value, text in wrapper_form.scoring_logreg.field.choices %}
+                        <option value="{{ value }}" {% if wrapper_form.scoring_logreg.value == value or value == 'accuracy' and not wrapper_form.scoring_logreg.value %}selected{% endif %}>
+                            {{ text }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text">{{ wrapper_form.scoring_logreg.help_text }}</div>
+                </div>
+            </div>
+            
+            <!-- SFS with Decision Tree Parameters -->
+            <div id="sfs-tree-params" class="parameter-group {% if pipeline.wrapper_method == 'SFS with Decision Tree' %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_scoring_tree">Метрика оценки:</label>
+                    <select name="scoring_tree" id="id_scoring_tree" class="form-control">
+                        {% for value, text in wrapper_form.scoring_tree.field.choices %}
+                        <option value="{{ value }}" {% if wrapper_form.scoring_tree.value == value or value == 'accuracy' and not wrapper_form.scoring_tree.value %}selected{% endif %}>
+                            {{ text }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text">{{ wrapper_form.scoring_tree.help_text }}</div>
+                </div>
+            </div>
+            
+            <!-- RFE with Logistic Regression Parameters -->
+            <div id="rfe-logreg-params" class="parameter-group {% if pipeline.wrapper_method == 'RFE with Logistic Regression' %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_n_features_logreg">Количество признаков (доля):</label>
+                    <input type="number" name="n_features_logreg" id="id_n_features_logreg" 
+                           step="0.01" min="0" max="1" 
+                           value="{{ wrapper_form.n_features_logreg.value|default:0.5 }}" 
+                           class="form-control">
+                    <div class="help-text">{{ wrapper_form.n_features_logreg.help_text }}</div>
+                </div>
+            </div>
+            
+            <!-- RFE with Decision Tree Parameters -->
+            <div id="rfe-tree-params" class="parameter-group {% if pipeline.wrapper_method == 'RFE with Decision Tree' %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_n_features_tree">Количество признаков (доля):</label>
+                    <input type="number" name="n_features_tree" id="id_n_features_tree" 
+                           step="0.01" min="0" max="1" 
+                           value="{{ wrapper_form.n_features_tree.value|default:0.5 }}" 
+                           class="form-control">
+                    <div class="help-text">{{ wrapper_form.n_features_tree.help_text }}</div>
+                </div>
+            </div>
         </div>
 
         <div class="method-section">
@@ -172,7 +339,7 @@
             <p class="method-description">
                 Финальная модель для прогнозирования
             </p>
-            <select name="model_method" required>
+            <select name="model_method" id="model-method-select" required>
                 <option value="">Выберите модель</option>
                 {% for method, description in model_methods.items %}
                 <option value="{{ method }}" {% if pipeline.model_method == method %}selected{% endif %}>
@@ -180,6 +347,117 @@
                 </option>
                 {% endfor %}
             </select>
+
+            <!-- Common Model Parameters -->
+            <div id="common-model-params" class="parameter-group {% if pipeline.model_method %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_test_size">Размер тестовой выборки:</label>
+                    <input type="number" name="test_size" id="id_test_size" 
+                           step="0.01" min="0.01" max="1" 
+                           value="{{ model_form.test_size.value|default:0.25 }}" 
+                           class="form-control">
+                    <div class="help-text">{{ model_form.test_size.help_text }}</div>
+                </div>
+            </div>
+            
+            <!-- Logistic Regression Parameters -->
+            <div id="logreg-params" class="parameter-group {% if pipeline.model_method == 'Logistic Regression' %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_C">Параметр регуляризации C:</label>
+                    <input type="number" name="C" id="id_C" 
+                           step="0.01" min="0.01" 
+                           value="{{ model_form.C.value|default:1.0 }}" 
+                           class="form-control">
+                    <div class="help-text">{{ model_form.C.help_text }}</div>
+                </div>
+                
+                <div class="parameter-field">
+                    <label for="id_penalty">Тип регуляризации:</label>
+                    <select name="penalty" id="id_penalty" class="form-control">
+                        {% for value, text in model_form.penalty.field.choices %}
+                        <option value="{{ value }}" {% if model_form.penalty.value == value or value == 'l2' and not model_form.penalty.value %}selected{% endif %}>
+                            {{ text }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text">{{ model_form.penalty.help_text }}</div>
+                </div>
+                
+                <div class="parameter-field">
+                    <label for="id_solver">Алгоритм оптимизации:</label>
+                    <select name="solver" id="id_solver" class="form-control">
+                        {% for value, text in model_form.solver.field.choices %}
+                        <option value="{{ value }}" {% if model_form.solver.value == value or value == 'lbfgs' and not model_form.solver.value %}selected{% endif %}>
+                            {{ text }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text">{{ model_form.solver.help_text }}</div>
+                </div>
+            </div>
+            
+            <!-- XGBoost Parameters (for both Linear and Tree) -->
+            <div id="xgboost-params" class="parameter-group {% if pipeline.model_method == 'XGBoost Linear' or pipeline.model_method == 'XGBoost Tree' %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_n_estimators">Количество деревьев:</label>
+                    <input type="number" name="n_estimators" id="id_n_estimators" 
+                           min="1" 
+                           value="{{ model_form.n_estimators.value|default:100 }}" 
+                           class="form-control">
+                    <div class="help-text">{{ model_form.n_estimators.help_text }}</div>
+                </div>
+                
+                <div class="parameter-field">
+                    <label for="id_learning_rate">Скорость обучения:</label>
+                    <input type="number" name="learning_rate" id="id_learning_rate" 
+                           step="0.01" min="0.01" max="1.0" 
+                           value="{{ model_form.learning_rate.value|default:0.3 }}" 
+                           class="form-control">
+                    <div class="help-text">{{ model_form.learning_rate.help_text }}</div>
+                </div>
+            </div>
+            
+            <!-- Decision Tree Parameters -->
+            <div id="tree-params" class="parameter-group {% if pipeline.model_method == 'Decision Tree' %}active{% endif %}">
+                <div class="parameter-field">
+                    <label for="id_max_depth">Максимальная глубина дерева:</label>
+                    <input type="number" name="max_depth" id="id_max_depth" 
+                           min="1" 
+                           value="{{ model_form.max_depth.value|default:'' }}" 
+                           class="form-control">
+                    <div class="help-text">{{ model_form.max_depth.help_text }}</div>
+                </div>
+                
+                <div class="parameter-field">
+                    <label for="id_min_samples_split">Минимальная доля образцов для разделения:</label>
+                    <input type="number" name="min_samples_split" id="id_min_samples_split" 
+                            step="0.01" min="0.01" max="1.0" 
+                           value="{{ model_form.min_samples_split.value|default:0.01 }}" 
+                           class="form-control">
+                    <div class="help-text">{{ model_form.min_samples_split.help_text }}</div>
+                </div>
+                
+                <div class="parameter-field">
+                    <label for="id_min_samples_leaf">Минимальная доля образцов в листе:</label>
+                    <input type="number" name="min_samples_leaf" id="id_min_samples_leaf" 
+                            step="0.01" min="0.01" max="1.0" 
+                           value="{{ model_form.min_samples_leaf.value|default:0.01 }}" 
+                           class="form-control">
+                    <div class="help-text">{{ model_form.min_samples_leaf.help_text }}</div>
+                </div>
+                
+                <div class="parameter-field">
+                    <label for="id_criterion">Критерий разделения:</label>
+                    <select name="criterion" id="id_criterion" class="form-control">
+                        {% for value, text in model_form.criterion.field.choices %}
+                        <option value="{{ value }}" {% if model_form.criterion.value == value or value == 'gini' and not model_form.criterion.value %}selected{% endif %}>
+                            {{ text }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="help-text">{{ model_form.criterion.help_text }}</div>
+                </div>
+            </div>
         </div>
 
         <div class="button-row">
@@ -192,4 +470,137 @@
             {% endif %}
         </div>
     </form>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Filter method parameters
+            const filterMethodSelect = document.getElementById('filter-method-select');
+            const filterParamGroups = {
+                'Variance Threshold': document.getElementById('variance-threshold-params'),
+                'ANOVA': document.getElementById('anova-params'),
+                'Mutual Information': document.getElementById('mutual-info-params'),
+                'MRMR': document.getElementById('mrmr-params')
+            };
+            
+            function updateFilterParamGroups() {
+                // Hide all param groups
+                Object.values(filterParamGroups).forEach(group => {
+                    if (group) group.classList.remove('active');
+                });
+                
+                // Show the selected method's param group
+                const selectedMethod = filterMethodSelect.value;
+                if (selectedMethod && filterParamGroups[selectedMethod]) {
+                    filterParamGroups[selectedMethod].classList.add('active');
+                }
+            }
+            
+            // Wrapper method parameters
+            const wrapperMethodSelect = document.getElementById('wrapper-method-select');
+            const wrapperParamGroups = {
+                'SFS with Logistic Regression': document.getElementById('sfs-logreg-params'),
+                'SFS with Decision Tree': document.getElementById('sfs-tree-params'),
+                'RFE with Logistic Regression': document.getElementById('rfe-logreg-params'),
+                'RFE with Decision Tree': document.getElementById('rfe-tree-params')
+            };
+            
+            function updateWrapperParamGroups() {
+                // Hide all param groups
+                Object.values(wrapperParamGroups).forEach(group => {
+                    if (group) group.classList.remove('active');
+                });
+                
+                // Show the selected method's param group
+                const selectedMethod = wrapperMethodSelect.value;
+                if (selectedMethod && wrapperParamGroups[selectedMethod]) {
+                    wrapperParamGroups[selectedMethod].classList.add('active');
+                }
+            }
+            
+            // Model method parameters
+            const modelMethodSelect = document.getElementById('model-method-select');
+            const modelParamGroups = {
+                'common': document.getElementById('common-model-params'),
+                'Logistic Regression': document.getElementById('logreg-params'),
+                'XGBoost Linear': document.getElementById('xgboost-params'),
+                'XGBoost Tree': document.getElementById('xgboost-params'),
+                'Decision Tree': document.getElementById('tree-params')
+            };
+            
+            function updateModelParamGroups() {
+                // Always show/hide common params based on whether any model is selected
+                if (modelMethodSelect.value) {
+                    modelParamGroups['common'].classList.add('active');
+                } else {
+                    modelParamGroups['common'].classList.remove('active');
+                }
+                
+                // Hide all specific model param groups
+                ['Logistic Regression', 'XGBoost Linear', 'XGBoost Tree', 'Decision Tree'].forEach(method => {
+                    if (modelParamGroups[method]) {
+                        modelParamGroups[method].classList.remove('active');
+                    }
+                });
+                
+                // Show the selected method's param group
+                const selectedMethod = modelMethodSelect.value;
+                if (selectedMethod && modelParamGroups[selectedMethod]) {
+                    modelParamGroups[selectedMethod].classList.add('active');
+                }
+            }
+            
+            // Initialize
+            updateFilterParamGroups();
+            updateWrapperParamGroups();
+            updateModelParamGroups();
+            
+            // Update on change
+            filterMethodSelect.addEventListener('change', updateFilterParamGroups);
+            wrapperMethodSelect.addEventListener('change', updateWrapperParamGroups);
+            modelMethodSelect.addEventListener('change', updateModelParamGroups);
+            
+            // Update solver options based on penalty for Logistic Regression
+            const penaltySelect = document.getElementById('id_penalty');
+            const solverSelect = document.getElementById('id_solver');
+            
+            if (penaltySelect && solverSelect) {
+                function updateSolverOptions() {
+                    const penalty = penaltySelect.value;
+                    const currentSolver = solverSelect.value;
+                    let validSolvers = [];
+                    
+                    // Define valid solvers for each penalty type
+                    switch (penalty) {
+                        case 'l1':
+                            validSolvers = ['liblinear', 'saga'];
+                            break;
+                        case 'l2':
+                            validSolvers = ['newton-cg', 'lbfgs', 'liblinear', 'sag', 'saga'];
+                            break;
+                        case 'elasticnet':
+                            validSolvers = ['saga'];
+                            break;
+                        case 'none':
+                            validSolvers = ['newton-cg', 'lbfgs', 'sag', 'saga'];
+                            break;
+                        default:
+                            validSolvers = ['lbfgs']; // Default
+                    }
+                    
+                    // Disable all options first
+                    Array.from(solverSelect.options).forEach(option => {
+                        option.disabled = !validSolvers.includes(option.value);
+                    });
+                    
+                    // If current solver is not valid, select the first valid one
+                    if (!validSolvers.includes(currentSolver)) {
+                        solverSelect.value = validSolvers[0];
+                    }
+                }
+                
+                updateSolverOptions();
+                penaltySelect.addEventListener('change', updateSolverOptions);
+            }
+        });
+    </script>
 {% endblock %} 

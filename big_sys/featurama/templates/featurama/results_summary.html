@@ -138,6 +138,39 @@
         font-weight: 600;
     }
     
+    .params-section {
+        margin-top: var(--spacing);
+        padding: var(--spacing);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background-color: white;
+        box-shadow: var(--shadow);
+    }
+    
+    .params-title {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+    
+    .params-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: var(--spacing);
+    }
+    
+    .params-table th, .params-table td {
+        padding: 0.5rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .params-table th {
+        font-weight: 500;
+        color: var(--text-light);
+    }
+    
     @media (max-width: 768px) {
         .features-list {
             grid-template-columns: 1fr;
@@ -165,9 +198,140 @@
         <h2>Информация о Пайплайне</h2>
         <div class="pipeline-info">
             <p><strong>Набор Данных:</strong> {{ pipeline.dataset.name }}</p>
+            <p><strong>Целевая переменная:</strong> {{ pipeline.dataset.target_variable }}</p>
             <p><strong>Метод Фильтрации:</strong> {{ pipeline.filter_method }}</p>
             <p><strong>Метод Обертки:</strong> {{ pipeline.wrapper_method }}</p>
             <p><strong>Модель:</strong> {{ pipeline.model_method }}</p>
+        </div>
+        
+        <!-- Параметры методов -->
+        <div class="params-section">
+            <h3>Параметры методов</h3>
+            
+            <!-- Filter Method Parameters -->
+            <div class="filter-params">
+                <h4 class="params-title">Параметры метода фильтрации ({{ pipeline.filter_method }})</h4>
+                {% if pipeline.filter_params %}
+                    <table class="params-table">
+                        <thead>
+                            <tr>
+                                <th width="30%">Параметр</th>
+                                <th width="20%">Значение</th>
+                                <th width="50%">Описание</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for param_name, param_value in pipeline.filter_params.items %}
+                                <tr>
+                                    <td><strong>{{ param_name }}</strong></td>
+                                    <td>{{ param_value }}</td>
+                                    <td>
+                                        {% if param_name == "threshold" %}
+                                            Порог дисперсии (признаки с меньшей дисперсией будут удалены)
+                                        {% elif param_name == "k" %}
+                                            Количество лучших признаков для отбора
+                                        {% elif param_name == "n_features" %}
+                                            Количество признаков для отбора
+                                        {% elif param_name == "method" %}
+                                            Метод расчета mRMR (MID - Mutual Information Difference, MIQ - Mutual Information Quotient)
+                                        {% else %}
+                                            Параметр метода фильтрации
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-muted">Используются параметры по умолчанию</p>
+                {% endif %}
+            </div>
+            
+            <!-- Wrapper Method Parameters -->
+            <div class="wrapper-params">
+                <h4 class="params-title">Параметры метода обертки ({{ pipeline.wrapper_method }})</h4>
+                {% if pipeline.wrapper_params %}
+                    <table class="params-table">
+                        <thead>
+                            <tr>
+                                <th width="30%">Параметр</th>
+                                <th width="20%">Значение</th>
+                                <th width="50%">Описание</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for param_name, param_value in pipeline.wrapper_params.items %}
+                                <tr>
+                                    <td><strong>{{ param_name }}</strong></td>
+                                    <td>{{ param_value }}</td>
+                                    <td>
+                                        {% if param_name == "scoring" %}
+                                            Метрика оценки качества модели для отбора признаков
+                                        {% elif param_name == "n_features_to_select" %}
+                                            Доля или количество признаков для отбора
+                                        {% else %}
+                                            Параметр метода обертки
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-muted">Используются параметры по умолчанию</p>
+                {% endif %}
+            </div>
+            
+            <!-- Model Method Parameters -->
+            <div class="model-params">
+                <h4 class="params-title">Параметры модели ({{ pipeline.model_method }})</h4>
+                {% if pipeline.model_params %}
+                    <table class="params-table">
+                        <thead>
+                            <tr>
+                                <th width="30%">Параметр</th>
+                                <th width="20%">Значение</th>
+                                <th width="50%">Описание</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for param_name, param_value in pipeline.model_params.items %}
+                                <tr>
+                                    <td><strong>{{ param_name }}</strong></td>
+                                    <td>{{ param_value }}</td>
+                                    <td>
+                                        {% if param_name == "test_size" %}
+                                            Доля данных для тестирования (от 0.01 до 0.99)
+                                        {% elif param_name == "C" %}
+                                            Параметр регуляризации (меньше = сильнее регуляризация)
+                                        {% elif param_name == "penalty" %}
+                                            Тип регуляризации (l1, l2, elasticnet, none)
+                                        {% elif param_name == "solver" %}
+                                            Алгоритм оптимизации
+                                        {% elif param_name == "n_estimators" %}
+                                            Количество деревьев в ансамбле
+                                        {% elif param_name == "learning_rate" %}
+                                            Скорость обучения (от 0.001 до 1.0)
+                                        {% elif param_name == "max_depth" %}
+                                            Максимальная глубина дерева
+                                        {% elif param_name == "min_samples_split" %}
+                                            Минимальная доля образцов для разделения узла
+                                        {% elif param_name == "min_samples_leaf" %}
+                                            Минимальная доля образцов в листе
+                                        {% elif param_name == "criterion" %}
+                                            Функция для измерения качества разделения
+                                        {% else %}
+                                            Параметр модели
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-muted">Используются параметры по умолчанию</p>
+                {% endif %}
+            </div>
         </div>
     </div>
 

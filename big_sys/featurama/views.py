@@ -685,12 +685,14 @@ def export_report(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     styles['Title'].fontName = 'Arial'
     styles['Heading1'].fontName = 'Arial'
     styles['Heading2'].fontName = 'Arial'
+    styles['Heading3'].fontName = 'Arial'
     styles['Normal'].fontName = 'Arial'
     
     # Set font size
     styles['Title'].fontSize = 16
     styles['Heading1'].fontSize = 14
     styles['Heading2'].fontSize = 12
+    styles['Heading3'].fontSize = 11
     styles['Normal'].fontSize = 10
     
     story = []
@@ -704,6 +706,7 @@ def export_report(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     story.append(Paragraph("Информация о пайплайне", styles['Heading1']))
     info = [
         f"Набор данных: {pipeline.dataset.name}",
+        f"Целевая переменная: {pipeline.dataset.target_variable}",
         f"Метод фильтрации: {pipeline.filter_method}",
         f"Метод обертки: {pipeline.wrapper_method}",
         f"Метод модели: {pipeline.model_method}"
@@ -711,6 +714,68 @@ def export_report(request: HttpRequest, pipeline_id: int) -> HttpResponse:
     for item in info:
         story.append(Paragraph(item, styles['Normal']))
     story.append(Spacer(1, 12))
+    
+    # Add method parameters
+    story.append(Paragraph("Параметры методов", styles['Heading1']))
+    
+    # Filter method parameters
+    if pipeline.filter_params:
+        story.append(Paragraph(f"Параметры метода фильтрации ({pipeline.filter_method})", styles['Heading2']))
+        
+        # Create a table for better formatting
+        param_description = {
+            "threshold": "Порог дисперсии (признаки с меньшей дисперсией удаляются)",
+            "k": "Количество лучших признаков для отбора",
+            "n_features": "Количество признаков для отбора",
+            "method": "Метод расчета mRMR (MID или MIQ)"
+        }
+        
+        for param_name, param_value in pipeline.filter_params.items():
+            desc = param_description.get(param_name, "Параметр метода фильтрации")
+            story.append(Paragraph(f"• <b>{param_name}</b>: {param_value}", styles['Normal']))
+            story.append(Paragraph(f"  <i>{desc}</i>", styles['Normal']))
+            
+        story.append(Spacer(1, 6))
+    
+    # Wrapper method parameters
+    if pipeline.wrapper_params:
+        story.append(Paragraph(f"Параметры метода обертки ({pipeline.wrapper_method})", styles['Heading2']))
+        
+        param_description = {
+            "scoring": "Метрика оценки качества модели для отбора признаков",
+            "n_features_to_select": "Доля или количество признаков для отбора"
+        }
+        
+        for param_name, param_value in pipeline.wrapper_params.items():
+            desc = param_description.get(param_name, "Параметр метода обертки")
+            story.append(Paragraph(f"• <b>{param_name}</b>: {param_value}", styles['Normal']))
+            story.append(Paragraph(f"  <i>{desc}</i>", styles['Normal']))
+            
+        story.append(Spacer(1, 6))
+    
+    # Model method parameters
+    if pipeline.model_params:
+        story.append(Paragraph(f"Параметры модели ({pipeline.model_method})", styles['Heading2']))
+        
+        param_description = {
+            "test_size": "Доля данных для тестирования (от 0.01 до 0.99)",
+            "C": "Параметр регуляризации (меньше = сильнее регуляризация)",
+            "penalty": "Тип регуляризации (l1, l2, elasticnet, none)",
+            "solver": "Алгоритм оптимизации",
+            "n_estimators": "Количество деревьев в ансамбле",
+            "learning_rate": "Скорость обучения (от 0.001 до 1.0)",
+            "max_depth": "Максимальная глубина дерева",
+            "min_samples_split": "Минимальная доля образцов для разделения узла",
+            "min_samples_leaf": "Минимальная доля образцов в листе",
+            "criterion": "Функция для измерения качества разделения"
+        }
+        
+        for param_name, param_value in pipeline.model_params.items():
+            desc = param_description.get(param_name, "Параметр модели")
+            story.append(Paragraph(f"• <b>{param_name}</b>: {param_value}", styles['Normal']))
+            story.append(Paragraph(f"  <i>{desc}</i>", styles['Normal']))
+            
+        story.append(Spacer(1, 12))
     
     # Add metrics
     story.append(Paragraph("Метрики модели", styles['Heading1']))
